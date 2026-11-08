@@ -19,7 +19,7 @@ In `src/lib/env.ts`:
 +  GOOGLE_CLOUD_LOCATION: z.string().min(1).catch('global'), // blank line in .env also falls back
 ```
 
-Commit it on its own, titled e.g. `contract: default GOOGLE_CLOUD_LOCATION to global`, then merge and deploy (`./deploy.sh` on the server).
+Commit it on its own, titled e.g. `contract: default GOOGLE_CLOUD_LOCATION to global`, together with the `SPEC.md` env table default (`us-central1` → `global`), and drop "Set to `global`" from that row and the README's "set `GOOGLE_CLOUD_LOCATION=global`" steps if you want them optional, then merge and deploy (`./deploy.sh` on the server).
 
 Optional, to see what each container actually uses: in `getClient()` in `src/lib/gemini/client.ts`, right after the client is created, add:
 
@@ -29,7 +29,7 @@ console.info(`[gemini] vertex project=${env.GOOGLE_CLOUD_PROJECT} location=${env
 
 Then check `docker compose logs web | grep gemini`.
 
-The docs, `.env.example` and `scripts/gemini-smoke.mjs` already default to `global` (branch `jerry/vertex-global`).
+`.env.example` and `scripts/gemini-smoke.mjs` already use `global`, and the README tells everyone to set it.
 
 ### Fix 2: check the server (works without a deploy)
 
@@ -41,8 +41,8 @@ cd ~/hackcamp27
 grep -n "GOOGLE_CLOUD" .env.production | cat -A
 # Fix Windows line endings if needed:
 sed -i 's/\r$//' .env.production
-# Every replica (there are 4) must print global:
-for i in 1 2 3 4; do docker compose exec --index $i web printenv GOOGLE_CLOUD_LOCATION; done
+# Every web replica must print global:
+for c in $(docker compose ps -q web); do docker exec "$c" printenv GOOGLE_CLOUD_LOCATION; done
 # env_file is only read when a container is created, so recreate after any change:
 docker compose up -d --force-recreate web
 ```
@@ -52,5 +52,5 @@ Also check for other places that could set it: `.env` next to `docker-compose.ym
 ## Local dev reminders
 
 - Sign in: `gcloud auth application-default login` and `gcloud auth application-default set-quota-project <PROJECT_ID>`.
-- `.env.local` needs `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` and `GOOGLE_CLOUD_LOCATION=global` (or leave the location out once Fix 1 is merged). If you copied an older `.env.example`, it may still say `us-central1`: change it.
+- `.env.local` needs `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` and `GOOGLE_CLOUD_LOCATION=global` (required until Fix 1 is merged). If you copied an older `.env.example`, it may still say `us-central1`: change it.
 - Smoke test: `node --env-file=.env.local scripts/gemini-smoke.mjs`.
