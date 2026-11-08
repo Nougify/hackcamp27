@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6XCQ4552K0X258H1GREKNHE",
+  "strategy": "manual-commit",
+  "branch": "integrate-johnny",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "src/lib/env.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 90,
+    "cache_creation_tokens": 66503,
+    "cache_read_tokens": 5996448,
+    "output_tokens": 39941,
+    "api_call_count": 45
+  },
+  "redaction": {
+    "replacements": 13,
+    "layers": {
+      "betterleaks": 2,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 9,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
