@@ -46,3 +46,6 @@ next-env.d.ts
 
 # local tool logs
 /logs/
+
+# playwright MCP output
+/.playwright-mcp/
