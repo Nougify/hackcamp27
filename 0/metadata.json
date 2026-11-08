@@ -1,0 +1,71 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6X77ZZADVQD7KBAZQ8KNQEK",
+  "session_id": "ca44ba44-c2f1-4ca2-a44f-0caa51990f5d",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T09:18:47.3151569Z",
+  "branch": "johnny/nutrition",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "src/server/pantry/repo.db.test.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "",
+  "turn_id": "c58edb6fd443",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "redaction": {
+    "replacements": 0,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-claude-code-review-2026-11-08T09:13:30.1310425Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "review"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "c58edb6fd443",
+      "timestamp": "2026-11-08T09:13:30.1310425Z",
+      "native": {
+        "command": "/review"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/review",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "kind": "agent_review",
+  "review_skills": [
+    "/review"
+  ],
+  "review_prompt": "/review\n\nReview profile: general\n\nTask: Review this change for correctness, regressions, API design, missing tests, maintainability, and user-facing behavior changes. Return only real, actionable defects with concrete evidence and an exact code pointer. No praise, summaries, speculation, style preferences, or nice-to-have refactors.\n\nOutput format:\n- Start with one verdict line: approve / approve with nits / request changes, plus a short reason.\n- Then list actionable findings only. Each finding MUST be a separate top-level Markdown bullet starting with [high], [medium], or [low].\n- Include an exact file:line pointer in each finding when possible, plus the bug, impact, and fix in one concise paragraph.\n- Do not combine multiple defects in one bullet or paragraph. Do not emit severity-heading paragraphs like \"**[HIGH] ...**\" without a leading bullet.\n- If there are no actionable findings, output only the verdict line and the final JSON line.\n- Keep the report compact: quote only the minimal relevant snippet (a few lines) per finding. Never paste whole files, full diffs, or large logs, and skip decorative formatting like tables or ASCII art — it wastes effort and is not rendered.\n\nScope: review the commits unique to this branch vs HEAD, plus any uncommitted changes in the working tree. Ignore code outside this scope.\n\nIn-progress session context (uncommitted):\n  dab2f091 Claude Code prompt: Fix the high severity issue and then push to johnny\n\nFinal line (required, read by a program):\nEnd your output with exactly one line holding only this JSON object, with no code fence and nothing after it:\n{\"summary\":\"one-sentence verdict\",\"comments\":[{\"severity\":\"high\",\"body\":\"bug; impact; fix\",\"location\":{\"granularity\":\"line\",\"file_path\":\"path/to/file.go\",\"start_line\":42}}]}\n- Add one comment per actionable finding reported above, with the same severity: high, medium, or low.\n- location.granularity is line (with start_line), range (with start_line and end_line), file, or whole_change.\n- If nothing is actionable, use an empty array: \"comments\":[].\n- This line is required even where other instructions say to output nothing else."
+}
