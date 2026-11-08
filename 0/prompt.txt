@@ -1,0 +1,9 @@
+we have 3 people on this team, split the spec.md into 3 tasks so we can all work on separate parts of the project
+
+---
+
+also commit the three as jerry.md, johnny.md and hang.md
+
+---
+
+no i want them to be able to work at the same time
