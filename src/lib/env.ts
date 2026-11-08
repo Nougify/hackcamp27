@@ -50,16 +50,18 @@ let cached: Env | null = null;
  */
 export function getEnv(): Env {
   if (cached) return cached;
+  // `KEY=` (empty, as in .env.example) means unset, not an invalid empty string.
+  const source = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ''));
   // `next build` imports route modules without runtime secrets; validate at request time instead.
   if (process.env.NODE_ENV === 'test' || process.env.NEXT_PHASE === 'phase-production-build') {
-    cached = schema.partial().parse(process.env) as Env;
+    cached = schema.partial().parse(source) as Env;
     return cached;
   }
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(source);
   if (!parsed.success && process.env.NODE_ENV !== 'production') {
     // Local dev without every key: warn and run; features needing a missing key fail on use.
     console.warn('[env] missing env vars (dev only, not fatal):', Object.keys(parsed.error.flatten().fieldErrors).join(', '));
-    cached = schema.partial().parse(process.env) as Env;
+    cached = schema.partial().parse(source) as Env;
     return cached;
   }
   if (!parsed.success) {

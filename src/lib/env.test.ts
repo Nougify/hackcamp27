@@ -61,3 +61,12 @@ describe('getEnv strict checks', () => {
     expect(getEnv().GEMINI_API_KEY).toBe('k');
   });
 });
+
+describe('empty variables', () => {
+  it('treats KEY= as unset: dev tolerates it, production reports it as missing', async () => {
+    const dev = await loadEnv({ ...VALID, AUTH0_DOMAIN: '', ELEVENLABS_API_KEY: '' });
+    expect(dev().AUTH0_DOMAIN).toBeUndefined();
+    const prod = await loadEnv({ ...VALID, AUTH0_DOMAIN: '' }, 'production');
+    expect(() => prod()).toThrow(/Invalid environment/);
+  });
+});
