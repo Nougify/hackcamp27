@@ -26,6 +26,8 @@ const COLUMNS = [
   'id', 'email', 'display_name', 'avatar_url', 'tz', 'daily_kcal_goal', 'daily_protein_goal_g',
   'diets', 'allergens', 'onboarded_at', 'past_best_before_grace_days',
 ];
+const DAY_MS = 86_400_000;
+
 /** Fresh fragment per query (postgres.js fragments are lazy query objects; don't share one). */
 const columns = () => sql(COLUMNS);
 
@@ -77,8 +79,24 @@ export async function updateProfile(userId: string, patch: UpdateMeInput): Promi
   return rowToProfile(row);
 }
 
-/** Settings → "Delete my data": removes the users row; every user-owned table cascades. */
+/**
+ * Settings → "Delete my data": removes the users row; every user-owned table cascades. The
+ * daily_nutrition aggregate has no FK, and its policy only refreshes 30 days, so older buckets
+ * are refreshed here to drop them. The refresh can't share a transaction with the delete.
+ */
 export async function deleteUserData(userId: string): Promise<void> {
+  const [{ first }] = await sql<{ first: Date | null }[]>`SELECT min(eaten_at) AS first FROM meal_logs WHERE user_id = ${userId}`;
   const result = await sql`DELETE FROM users WHERE id = ${userId}`;
   if (result.count === 0) throw new NotFoundError('User not found');
+  if (!first) return;
+
+  // Whole buckets only, and buckets are local days, so widen the window past both ends.
+  const from = new Date(first.getTime() - 2 * DAY_MS).toISOString();
+  const to = new Date(Date.now() + 2 * DAY_MS).toISOString();
+  try {
+    await sql`CALL refresh_continuous_aggregate('daily_nutrition', ${from}::timestamptz, ${to}::timestamptz)`;
+  } catch (err) {
+    // The account is already gone, so a retry would 404; log it for an operator to re-run.
+    console.error('[delete-user] daily_nutrition refresh failed', err);
+  }
 }

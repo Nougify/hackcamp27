@@ -1,3 +1,4 @@
+import 'server-only';
 import { emptyNutrients, kcalFromKj, mapAllergens, num, parsePackageText, servingFrom, sodiumMgFrom, str } from './parse';
 import { fetchProvider, type ParsedResponse, type ProviderResult } from './provider';
 

@@ -1,3 +1,4 @@
+import 'server-only';
 import type { Nutrients, Product } from '@/contracts/domain';
 import type { PackageQuantity, ServingSize } from './parse';
 

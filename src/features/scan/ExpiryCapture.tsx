@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ExpiryExtractionResponse } from '@/contracts/api';
-import { Button, Dialog } from '@/components/ui';
+import { Badge, Button, Dialog } from '@/components/ui';
 import type { AppliedExpiry } from '@/features/pantry/ProductForm';
 import { formatBestBeforeDate } from '@/features/pantry/expiry';
 import { scanApi } from './api';
@@ -65,7 +65,14 @@ export function ExpiryCapture({ onConfirm }: { onConfirm: (expiry: AppliedExpiry
         }}
         title="Best-before date"
       >
-        <div className="grid gap-4">
+        {/* This dialog sits inside ProductForm's <form>: Enter here must not submit that form. */}
+        <div
+          className="grid gap-4"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault();
+          }}
+        >
+          {result && <Badge tone="ai">Read by AI, please confirm</Badge>}
           {!result && <PhotoCapture max={1} busy={busy} addLabel="Take a close photo" submitLabel="Read date" onSubmit={(p) => void read(p)} />}
 
           {result && packaged && (

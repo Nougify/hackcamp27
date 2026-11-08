@@ -64,6 +64,7 @@ export function ProductForm({
   flaggedFields = [],
   badge,
   expirySlot,
+  allowZeroQuantity = false,
   submitLabel = 'Save',
   onSubmit,
   onCancel,
@@ -74,6 +75,8 @@ export function ProductForm({
   badge?: ReactNode;
   /** Controls under the date field, e.g. "Photo of date" (F4). `apply` fills the date in. */
   expirySlot?: (apply: (expiry: AppliedExpiry) => void) => ReactNode;
+  /** Editing an item that's already empty must not force the user to invent stock. */
+  allowZeroQuantity?: boolean;
   submitLabel?: string;
   onSubmit: (values: ProductFormValues) => Promise<void>;
   onCancel?: () => void;
@@ -114,7 +117,7 @@ export function ProductForm({
     setError(null);
     const q = parseNum(quantity);
     if (!name.trim()) return setError('Enter a name.');
-    if (q === null || Number.isNaN(q) || q <= 0) return setError('Enter a quantity greater than 0.');
+    if (q === null || Number.isNaN(q) || (q === 0 && !allowZeroQuantity)) return setError('Enter a quantity greater than 0.');
     if (hasExpiry && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) return setError('Pick a best-before date, or choose "No date".');
 
     const nums = Object.fromEntries(NUTRIENT_FIELDS.map((f) => [f.key, parseNum(nutrients[f.key] ?? '')])) as Record<

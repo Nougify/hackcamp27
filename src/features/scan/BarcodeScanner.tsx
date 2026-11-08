@@ -23,10 +23,12 @@ function cameraError(err: unknown): string {
   return "The camera isn't available. Type the barcode below, or use a photo.";
 }
 
-export function BarcodeScanner({ onCode, notice }: { onCode: (code: ScannedCode) => void; notice?: string | null }) {
+/** `ignoreGtin`: the camera skips this code and keeps scanning (it just failed and may still be in view). Typing it still works. */
+export function BarcodeScanner({ onCode, notice, ignoreGtin = null }: { onCode: (code: ScannedCode) => void; notice?: string | null; ignoreGtin?: string | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const onCodeRef = useRef(onCode);
+  const ignoreRef = useRef(ignoreGtin);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
@@ -37,7 +39,8 @@ export function BarcodeScanner({ onCode, notice }: { onCode: (code: ScannedCode)
 
   useEffect(() => {
     onCodeRef.current = onCode;
-  }, [onCode]);
+    ignoreRef.current = ignoreGtin;
+  }, [onCode, ignoreGtin]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +84,7 @@ export function BarcodeScanner({ onCode, notice }: { onCode: (code: ScannedCode)
               for (const code of codes) {
                 // A failed check digit here is a misread: keep scanning without bothering the user.
                 const result = normalizeBarcode(code.rawValue, asBarcodeFormat(code.format));
-                if (result.ok && confirmRead(code.rawValue)) {
+                if (result.ok && result.gtin !== ignoreRef.current && confirmRead(code.rawValue)) {
                   onCodeRef.current(result);
                   return;
                 }

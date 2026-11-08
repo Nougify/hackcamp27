@@ -2,11 +2,11 @@ import 'server-only';
 import { z } from 'zod';
 import sql from '@/lib/db';
 import type { ManualMealRequest } from '@/contracts/api';
-import type { DailyTotals, MealLog } from '@/contracts/domain';
+import type { DailyTotals, MealLog, UserProfile } from '@/contracts/domain';
 import { NotFoundError, UnprocessableError } from '@/lib/errors';
 import { normalizeGtin } from '@/lib/gtin';
 import { isDisplayUnit } from '@/lib/units';
-import { amountError, amountInStock, nutritionForAmount, type MealNutrition } from '@/features/nutrition/amounts';
+import { amountError, amountInStock, itemSource, nutritionForAmount, productSource, type MealNutrition } from '@/features/nutrition/amounts';
 import { addDays, todayInTz } from '@/server/pantry/dates';
 import { getProfile } from '@/server/pantry/profile';
 import { rowToPantryItem, type PantryItemRow } from '@/server/pantry/repo';
@@ -93,6 +93,9 @@ const trimNumber = (n: number) => String(Math.round(n * 100) / 100);
 export async function logMeal(user: { id: string; tz: string }, input: ManualMealRequest): Promise<MealLog> {
   const at = resolveEatenAt(input.eatenAt);
   const localDate = todayInTz(user.tz, at);
+  // Before the transaction: this uses its own pooled connection, which could deadlock inside one.
+  const code = input.kind === 'barcode' ? normalizeGtin(input.gtin) : null;
+  const cached = code?.ok ? await getCachedProduct(code.gtin) : null;
 
   return sql.begin(async (tx) => {
     let meal: NewMeal;
@@ -110,7 +113,7 @@ export async function logMeal(user: { id: string; tz: string }, input: ManualMea
       const [row] = await tx<PantryItemRow[]>`SELECT * FROM pantry_items WHERE id = ${input.pantryItemId} AND user_id = ${user.id} FOR UPDATE`;
       if (!row) throw new NotFoundError('Pantry item not found');
       const item = rowToPantryItem(row, user.tz);
-      const source = { basis: item.nutritionBasis, nutrition: item.nutrition, stockDim: item.dim, gramsPerUnit: item.gramsPerUnit, densityGPerMl: item.densityGPerMl };
+      const source = itemSource(item);
       meal = {
         ...checkedNutrition(nutritionForAmount(source, input.amount, input.unit)),
         source: 'pantry_item',
@@ -129,11 +132,9 @@ export async function logMeal(user: { id: string; tz: string }, input: ManualMea
         }
       }
     } else {
-      const code = normalizeGtin(input.gtin);
-      const cached = code.ok ? await getCachedProduct(code.gtin) : null;
       if (!cached) throw new NotFoundError('Product not found. Scan it again.');
       const { product } = cached;
-      const source = { basis: product.basis, nutrition: product.per100, stockDim: null, gramsPerUnit: null, densityGPerMl: null };
+      const source = productSource(product);
       meal = {
         ...checkedNutrition(nutritionForAmount(source, input.amount, input.unit)),
         source: 'barcode',
@@ -170,14 +171,16 @@ export async function deleteMeal(userId: string, id: string, eatenAt: Date): Pro
   if (result.count === 0) throw new NotFoundError('Meal not found');
 }
 
-export async function getTodayTotals(user: { id: string; tz: string }): Promise<DailyTotals> {
+type Goals = Pick<UserProfile, 'dailyKcalGoal' | 'dailyProteinGoalG'>;
+
+export async function getTodayTotals(user: { id: string; tz: string }, knownGoals?: Goals): Promise<DailyTotals> {
   const date = todayInTz(user.tz);
-  const [[row], profile] = await Promise.all([
+  const [[row], goals] = await Promise.all([
     sql<{ kcal: number; protein_g: number; carbs_g: number; fat_g: number; entries: number }[]>`
       SELECT coalesce(sum(kcal), 0) AS kcal, coalesce(sum(protein_g), 0) AS protein_g,
              coalesce(sum(carbs_g), 0) AS carbs_g, coalesce(sum(fat_g), 0) AS fat_g, count(*)::int AS entries
       FROM meal_logs WHERE user_id = ${user.id} AND local_date = ${date}`,
-    getProfile(user.id),
+    knownGoals ?? getProfile(user.id),
   ]);
   return {
     date,
@@ -186,26 +189,26 @@ export async function getTodayTotals(user: { id: string; tz: string }): Promise<
     carbsG: row.carbs_g,
     fatG: row.fat_g,
     entries: row.entries,
-    kcalGoal: profile.dailyKcalGoal,
-    proteinGoalG: profile.dailyProteinGoalG,
+    kcalGoal: goals.dailyKcalGoal,
+    proteinGoalG: goals.dailyProteinGoalG,
   };
 }
 
 export const MAX_HISTORY_DAYS = 30;
 
 /** The last `days` days ending today, oldest first, with empty days filled in as zeros. */
-export async function getHistory(user: { id: string; tz: string }, days: number): Promise<DailyTotals[]> {
+export async function getHistory(user: { id: string; tz: string }, days: number, knownGoals?: Goals): Promise<DailyTotals[]> {
   const today = todayInTz(user.tz);
   const first = addDays(today, -(days - 1));
   const afterLast = addDays(today, 1);
-  const [rows, profile] = await Promise.all([
+  const [rows, goals] = await Promise.all([
     sql<{ date: string; kcal: number | null; protein_g: number | null; carbs_g: number | null; fat_g: number | null; entries: number }[]>`
       SELECT (day AT TIME ZONE ${AGGREGATE_TZ})::date AS date, kcal, protein_g, carbs_g, fat_g, entries
       FROM daily_nutrition
       WHERE user_id = ${user.id}
         AND day >= (${first}::date)::timestamp AT TIME ZONE ${AGGREGATE_TZ}
         AND day < (${afterLast}::date)::timestamp AT TIME ZONE ${AGGREGATE_TZ}`,
-    getProfile(user.id),
+    knownGoals ?? getProfile(user.id),
   ]);
   const byDate = new Map(rows.map((r) => [r.date, r]));
   return Array.from({ length: days }, (_, i) => {
@@ -218,8 +221,8 @@ export async function getHistory(user: { id: string; tz: string }, days: number)
       carbsG: r?.carbs_g ?? 0,
       fatG: r?.fat_g ?? 0,
       entries: r?.entries ?? 0,
-      kcalGoal: profile.dailyKcalGoal,
-      proteinGoalG: profile.dailyProteinGoalG,
+      kcalGoal: goals.dailyKcalGoal,
+      proteinGoalG: goals.dailyProteinGoalG,
     };
   });
 }

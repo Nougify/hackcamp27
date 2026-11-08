@@ -7,7 +7,7 @@ const VALID = {
   AUTH0_SECRET: 'a'.repeat(64),
   APP_BASE_URL: 'https://mise.example',
   DATABASE_URL: 'postgres://u:p@h:5432/tsdb?sslmode=require',
-  GEMINI_API_KEY: 'k',
+  GOOGLE_CLOUD_PROJECT: 'mise-test',
   DATAANDAPIS_KEY: 'k',
   OFF_USER_AGENT: 'Mise/0.1 (team@example.com)',
   RECIPE_FETCH_USER_AGENT: 'MiseRecipeFetcher/0.1',
@@ -57,8 +57,8 @@ describe('getEnv strict checks', () => {
   });
 
   it('still tolerates missing variables in tests (partial parse)', async () => {
-    const getEnv = await loadEnv({ GEMINI_API_KEY: 'k' });
-    expect(getEnv().GEMINI_API_KEY).toBe('k');
+    const getEnv = await loadEnv({ GOOGLE_CLOUD_PROJECT: 'mise-test' });
+    expect(getEnv().GOOGLE_CLOUD_PROJECT).toBe('mise-test');
   });
 });
 

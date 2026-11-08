@@ -53,6 +53,9 @@ export function regexCrossCheck(x: DateComponents): ExpiryExtractionResponse['re
   return agrees ? 'agree' : 'disagree';
 }
 
+/** Same cap as expiryRawText in the pantry schema, so a long read can't block saving. */
+const RAW_TEXT_MAX = 200;
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** YYYY-MM-DD, or null if that calendar day doesn't exist. */
@@ -77,7 +80,7 @@ function shiftYears(iso: string, years: number): string {
 
 export function assembleDate(x: DateComponents, today: string): ExpiryExtractionResponse {
   const base = {
-    rawText: x.raw_text?.trim() || null,
+    rawText: x.raw_text?.trim().slice(0, RAW_TEXT_MAX) || null,
     dateType: x.date_type,
     regexCrossCheck: regexCrossCheck(x),
     confidence: x.confidence,

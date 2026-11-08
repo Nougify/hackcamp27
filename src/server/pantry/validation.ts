@@ -16,6 +16,8 @@ const displayUnit = z.string().refine(isDisplayUnit, 'unknown unit') as unknown 
 const isoDate = z.string().refine(isIsoDate, 'must be a real date (YYYY-MM-DD)');
 const nonNegative = z.number().finite().min(0);
 const positive = z.number().finite().gt(0);
+/** Nutrient columns are numeric(8,2). */
+const nutrient = nonNegative.max(999_999);
 
 export function isValidTimeZone(tz: string): boolean {
   try {
@@ -44,14 +46,14 @@ export const updateMeSchema = z
 
 const nutrients = z
   .object({
-    energyKcal: nonNegative.nullable(),
-    proteinG: nonNegative.nullable(),
-    carbohydrateG: nonNegative.nullable(),
-    fatG: nonNegative.nullable(),
-    saturatedFatG: nonNegative.nullable().optional(),
-    sugarsG: nonNegative.nullable().optional(),
-    fibreG: nonNegative.nullable().optional(),
-    sodiumMg: nonNegative.nullable().optional(),
+    energyKcal: nutrient.nullable(),
+    proteinG: nutrient.nullable(),
+    carbohydrateG: nutrient.nullable(),
+    fatG: nutrient.nullable(),
+    saturatedFatG: nutrient.nullable().optional(),
+    sugarsG: nutrient.nullable().optional(),
+    fibreG: nutrient.nullable().optional(),
+    sodiumMg: nutrient.nullable().optional(),
   })
   .strict();
 
