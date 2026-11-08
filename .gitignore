@@ -1,0 +1,34 @@
+# deps
+/node_modules
+
+# next
+/.next/
+/out/
+
+# env
+.env
+.env.local
+.env.production
+
+# build artifacts
+*.tsbuildinfo
+next-env.d.ts
+
+# test
+/playwright-report/
+/test-results/
+/coverage/
+
+# self-hosted assets copied by scripts/copy-assets.mjs
+/public/mediapipe/
+/public/zxing/
+
+# gesture model is downloaded once by a human and committed (§10.6)
+/public/models/*
+!/public/models/gesture_recognizer.task
+
+# OS
+.DS_Store
+
+# logs
+*.log

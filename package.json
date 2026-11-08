@@ -1,0 +1,46 @@
+{
+  "name": "mise",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --exclude '**/*.db.test.ts'",
+    "test:db": "node scripts/migrate.mjs --test && MISE_TEST_DB=1 vitest run 'src/**/*.db.test.ts'",
+    "test:e2e": "playwright test",
+    "migrate": "node scripts/migrate.mjs",
+    "postinstall": "node scripts/copy-assets.mjs"
+  },
+  "dependencies": {
+    "@auth0/nextjs-auth0": "4.33.0",
+    "@google/genai": "3.0.0",
+    "@mediapipe/tasks-vision": "1.2.2",
+    "barcode-detector": "3.2.3",
+    "cheerio": "1.2.0",
+    "next": "16.4.5",
+    "parse-ingredient": "3.2.0",
+    "postgres": "4.1.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recipe-scrapers": "3.5.0",
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.7",
+    "@playwright/test": "1.65.0",
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.14.0",
+    "eslint-config-next": "16.4.5",
+    "tailwindcss": "4.3.5",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
