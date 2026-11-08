@@ -81,3 +81,12 @@ Decision (team): **keep the `Allergen` enum unchanged** and document the mapping
   - EAN-8 uses its 8 digits for provider calls and the 13-digit padded form as the key.
 - **Label basis:** Gemini's `per_serving` maps to `ProductDraft.basis = 'serving'`. F3 AC1's `'per_serving'` wording is the schema value, not the contract value.
 - **Normalizer:** `normalized_name` comes from `src/server/pantry/normalize.ts` (Johnny). Hang's recipe ingredient parser imports it, so matching uses identical rules.
+
+## Products and vision notes (johnny/products, 2026-11-08)
+
+- Live check on the test fork: Nutella cold 1.2 s, warm 18 ms; bad check digit never reaches a provider; a garbage dataandapis key falls through to OFF and writes `error/401`.
+- A date with no printed year resolves to its next occurrence **on or after** today. SPEC says "after today"; a package stamped with today's date means today.
+- When a stale product can't be refreshed (providers failed or missed), the old row is served rather than `not_found`.
+- Per-serving labels stay `basis: 'serving'` in the API. The client converts to per-100 when it fills the form, and drops the numbers if no serving weight was read.
+- `proxy.ts` makes Next buffer at most 10 MB of a body, so the vision routes answer 413 above 10 MB total even though 3 x 4 MB is 12 MB. Client downscaling keeps real uploads far below that. `experimental.proxyClientMaxBodySize` in next.config.ts would lift it.
+- Gemini label and expiry reading is tested with mocks only: the Gemini API was down during this work. Run F3 AC1-3 and F4 AC3-5 on real photos once it is back.

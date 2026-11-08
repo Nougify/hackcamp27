@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { buttonClass } from '@/components/ui';
 import { PantryList } from '@/features/pantry/PantryList';
 import { requireOnboardedProfile } from '@/server/pantry/page-guard';
 import { listPantry } from '@/server/pantry/repo';
@@ -11,7 +13,15 @@ export default async function PantryPage() {
       <h1 className="font-display text-3xl font-semibold">Pantry</h1>
       <p className="mt-1 text-sm text-muted">Soonest best-before first.</p>
       <div className="mt-6">
-        <PantryList initialItems={items} graceDays={profile.pastBestBeforeGraceDays ?? 0} />
+        <PantryList
+          initialItems={items}
+          graceDays={profile.pastBestBeforeGraceDays ?? 0}
+          addSlot={
+            <Link href="/pantry/add" className={buttonClass()}>
+              Scan barcode
+            </Link>
+          }
+        />
       </div>
     </main>
   );

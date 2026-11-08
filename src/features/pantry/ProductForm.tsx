@@ -29,6 +29,12 @@ export interface ProductFormValues {
   allergenTags: Allergen[];
 }
 
+export interface AppliedExpiry {
+  date: string;
+  source: 'photo' | 'manual';
+  rawText: string | null;
+}
+
 export interface ProductFormInitial extends Partial<Omit<ProductFormValues, 'quantity'>> {
   quantity?: number | null;
 }
@@ -66,8 +72,8 @@ export function ProductForm({
   flaggedFields?: FlaggableField[];
   /** e.g. <Badge tone="ai">Read by AI, please confirm</Badge> */
   badge?: ReactNode;
-  /** Extra controls under the date field, e.g. "Photo of date" (F4). */
-  expirySlot?: ReactNode;
+  /** Controls under the date field, e.g. "Photo of date" (F4). `apply` fills the date in. */
+  expirySlot?: (apply: (expiry: AppliedExpiry) => void) => ReactNode;
   submitLabel?: string;
   onSubmit: (values: ProductFormValues) => Promise<void>;
   onCancel?: () => void;
@@ -92,8 +98,15 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Photo-read dates keep their source/raw text only while the user leaves the date unchanged.
-  const initialExpiry = initial?.expiryDate ?? null;
+  // A stored or photo-read date keeps its source and raw text only while the date is left unchanged.
+  const [knownExpiry, setKnownExpiry] = useState<AppliedExpiry | null>(
+    initial?.expiryDate ? { date: initial.expiryDate, source: initial.expirySource ?? 'manual', rawText: initial.expiryRawText ?? null } : null,
+  );
+  const applyExpiry = (expiry: AppliedExpiry) => {
+    setKnownExpiry(expiry);
+    setHasExpiry(true);
+    setExpiryDate(expiry.date);
+  };
   const dim = unitDim(unit);
 
   async function submit(e: React.FormEvent) {
@@ -115,7 +128,7 @@ export function ProductForm({
     if ([serving, gpu, dens].some((v) => Number.isNaN(v) || v === 0)) return setError('Sizes must be numbers greater than 0.');
 
     const anyNutrient = Object.values(nums).some((v) => v !== null);
-    const dateUnchanged = hasExpiry && expiryDate === initialExpiry;
+    const dateKnown = hasExpiry && knownExpiry !== null && expiryDate === knownExpiry.date;
     setSaving(true);
     try {
       await onSubmit({
@@ -126,8 +139,8 @@ export function ProductForm({
         gramsPerUnit: dim === 'count' ? gpu : (initial?.gramsPerUnit ?? null),
         densityGPerMl: dim === 'volume' ? dens : (initial?.densityGPerMl ?? null),
         expiryDate: hasExpiry ? expiryDate : null,
-        expirySource: hasExpiry ? (dateUnchanged ? (initial?.expirySource ?? 'manual') : 'manual') : null,
-        expiryRawText: hasExpiry && dateUnchanged ? (initial?.expiryRawText ?? null) : null,
+        expirySource: hasExpiry ? (dateKnown ? knownExpiry.source : 'manual') : null,
+        expiryRawText: dateKnown ? knownExpiry.rawText : null,
         nutritionBasis: basis,
         nutrition: anyNutrient
           ? { energyKcal: nums.energyKcal, proteinG: nums.proteinG, carbohydrateG: nums.carbohydrateG, fatG: nums.fatG }
@@ -227,12 +240,12 @@ export function ProductForm({
             onChange={(e) => setExpiryDate(e.target.value)}
           />
         )}
-        {hasExpiry && expiryDate === initialExpiry && initial?.expiryRawText && (
+        {hasExpiry && knownExpiry?.rawText && expiryDate === knownExpiry.date && (
           <p className="text-sm text-muted">
-            Read: <code className="rounded bg-surface-2 px-1">{initial.expiryRawText}</code>
+            Read: <code className="rounded bg-surface-2 px-1">{knownExpiry.rawText}</code>
           </p>
         )}
-        {expirySlot}
+        {expirySlot?.(applyExpiry)}
       </fieldset>
 
       <fieldset className="grid gap-3">
