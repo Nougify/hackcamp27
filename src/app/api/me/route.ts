@@ -1,4 +1,4 @@
-import { requireUser } from '@/lib/current-user';
+import { forgetDevUser, requireUser } from '@/lib/current-user';
 import { handleRouteError, jsonError, jsonErrorFromZod, jsonOk } from '@/lib/http';
 import { deleteUserData, getProfile, updateProfile } from '@/server/pantry/profile';
 import { updateMeSchema } from '@/server/pantry/validation';
@@ -33,6 +33,7 @@ export async function DELETE() {
   try {
     const user = await requireUser();
     await deleteUserData(user.id);
+    forgetDevUser();
     return jsonOk({ ok: true as const });
   } catch (err) {
     return handleRouteError(err);

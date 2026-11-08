@@ -49,6 +49,11 @@ function ensureDevUser(): Promise<void> {
   return devUserSeeded;
 }
 
+/** After "Delete my data" removes the demo user, let the next request re-create it. */
+export function forgetDevUser(): void {
+  devUserSeeded = null;
+}
+
 /**
  * First line of every route handler (SPEC.md §7). Upserts the Auth0 session's
  * `sub` into `users` (never merges by email — SPEC.md §5.2) and returns our
