@@ -248,4 +248,38 @@ describe('profile', () => {
     await expect(deleteUserData(u)).rejects.toBeInstanceOf(NotFoundError);
     await expect(getProfile(u)).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it('delete my data works for a user who has cooked (session-linked meals and events)', async () => {
+    const u = await makeUser();
+    const pantryItem = await createPantryItem(u, TZ, item());
+    const [recipe] = await tsql<{ id: string }[]>`
+      INSERT INTO recipes (user_id, url_hash, source_url, site_name, title, extraction_method)
+      VALUES (${u}, ${`test-${uid()}`}, ${`https://example.test/${uid()}`}, 'example', 'Soup', 'jsonld') RETURNING id`;
+    const [original] = await tsql<{ id: string }[]>`
+      INSERT INTO recipe_variants (recipe_id, kind, servings, ingredients, steps)
+      VALUES (${recipe.id}, 'original', 1, ${tsql.json([])}, ${tsql.json([])}) RETURNING id`;
+    const [adapted] = await tsql<{ id: string }[]>`
+      INSERT INTO recipe_variants (recipe_id, parent_variant_id, kind, servings, ingredients, steps)
+      VALUES (${recipe.id}, ${original.id}, 'ai_adapted', 1, ${tsql.json([])}, ${tsql.json([])}) RETURNING id`;
+    const [session] = await tsql<{ id: string }[]>`
+      INSERT INTO cooking_sessions (user_id, recipe_variant_id, status, servings_planned, finished_at)
+      VALUES (${u}, ${adapted.id}, 'finished', 1, now()) RETURNING id`;
+    await tsql`
+      INSERT INTO meal_logs (user_id, local_date, source, cooking_session_id, recipe_variant_id, label, kcal)
+      VALUES (${u}, ${todayInTz(TZ)}, 'cooking_session', ${session.id}, ${adapted.id}, 'Soup', 300)`;
+    await tsql`
+      INSERT INTO pantry_events (user_id, pantry_item_id, kind, delta_base, cooking_session_id)
+      VALUES (${u}, ${pantryItem.id}, 'cook_deduct', -100, ${session.id})`;
+
+    await deleteUserData(u);
+
+    const [c] = await tsql<{ users: number; recipes: number; variants: number; sessions: number; meals: number; events: number }[]>`
+      SELECT (SELECT count(*) FROM users WHERE id = ${u})::int AS users,
+             (SELECT count(*) FROM recipes WHERE user_id = ${u})::int AS recipes,
+             (SELECT count(*) FROM recipe_variants WHERE recipe_id = ${recipe.id})::int AS variants,
+             (SELECT count(*) FROM cooking_sessions WHERE user_id = ${u})::int AS sessions,
+             (SELECT count(*) FROM meal_logs WHERE user_id = ${u})::int AS meals,
+             (SELECT count(*) FROM pantry_events WHERE user_id = ${u})::int AS events`;
+    expect(c).toEqual({ users: 0, recipes: 0, variants: 0, sessions: 0, meals: 0, events: 0 });
+  });
 });
