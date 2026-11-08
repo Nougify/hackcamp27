@@ -1,0 +1,9 @@
+can you pull then start the pr or something
+
+---
+
+ok now for deployment / sharing env vars with my teammates how would i do that if i'm using the adc
+
+---
+
+can you add requirements for running locally (such as the google sdk and stuff) into our readme
