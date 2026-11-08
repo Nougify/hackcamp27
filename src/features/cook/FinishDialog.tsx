@@ -108,8 +108,16 @@ export function FinishDialog({
   return (
     <Dialog open={open} onClose={onClose} title="Finish cooking" className="theme-cook max-h-[90dvh] w-[min(44rem,calc(100vw-2rem))]">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Stepper label="Servings cooked" value={servingsCooked} min={1} onChange={setServingsCooked} />
-        <Stepper label="Servings you ate" value={servingsEaten} min={0} onChange={setServingsEaten} />
+        <Stepper
+          label="Servings cooked"
+          value={servingsCooked}
+          min={1}
+          onChange={(n) => {
+            setServingsCooked(n);
+            setServingsEaten((e) => Math.min(e, n)); // can't eat more than was cooked (server enforces too)
+          }}
+        />
+        <Stepper label="Servings you ate" value={servingsEaten} min={0} max={servingsCooked} onChange={setServingsEaten} />
       </div>
 
       <h3 className="mt-6 text-lg font-semibold">Remove from pantry</h3>
@@ -194,7 +202,7 @@ export function FinishDialog({
   );
 }
 
-function Stepper({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (n: number) => void }) {
+function Stepper({ label, value, min, max, onChange }: { label: string; value: number; min: number; max?: number; onChange: (n: number) => void }) {
   return (
     <div>
       <span className="text-sm text-muted">{label}</span>
@@ -205,7 +213,7 @@ function Stepper({ label, value, min, onChange }: { label: string; value: number
         <span className="w-12 text-center text-2xl font-semibold" aria-live="polite">
           {value}
         </span>
-        <Button size="lg" variant="secondary" aria-label={`More: ${label}`} onClick={() => onChange(value + 1)}>
+        <Button size="lg" variant="secondary" aria-label={`More: ${label}`} onClick={() => onChange(value + 1)} disabled={max !== undefined && value >= max}>
           +
         </Button>
       </div>
