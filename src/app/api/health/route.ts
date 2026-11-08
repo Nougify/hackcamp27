@@ -7,7 +7,8 @@ export async function GET() {
   let db: 'up' | 'down' = 'up';
   try {
     await sql`SELECT 1`;
-  } catch {
+  } catch (err) {
+    console.error('[health] database check failed:', err instanceof Error ? err.message : 'unknown error');
     db = 'down';
   }
   return Response.json(
