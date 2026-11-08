@@ -1,16 +1,27 @@
 import 'server-only';
 import { z } from 'zod';
 
+const PG_URL = /^postgres(ql)?:\/\//;
+
+function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const schema = z.object({
   AUTH0_DOMAIN: z.string().min(1),
   AUTH0_CLIENT_ID: z.string().min(1),
   AUTH0_CLIENT_SECRET: z.string().min(1),
-  AUTH0_SECRET: z.string().min(1),
+  AUTH0_SECRET: z.string().min(32, 'must be at least 32 characters (openssl rand -hex 32)'),
   APP_BASE_URL: z.string().url().optional(),
 
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().regex(PG_URL, 'must be a postgres:// connection string'),
   DB_POOL_MAX: z.coerce.number().int().positive().default(5),
-  DATABASE_URL_TEST: z.string().optional(),
+  DATABASE_URL_TEST: z.string().regex(PG_URL, 'must be a postgres:// connection string').optional(),
 
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
@@ -25,7 +36,7 @@ const schema = z.object({
   ELEVENLABS_VOICE_ID: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
   ELEVENLABS_MODEL_ID: z.string().default('eleven_flash_v2_5'),
 
-  DEFAULT_TZ: z.string().default('America/Vancouver'),
+  DEFAULT_TZ: z.string().refine(isValidTimeZone, 'must be an IANA time zone').default('America/Vancouver'),
 });
 
 type Env = z.infer<typeof schema>;
@@ -53,6 +64,10 @@ export function getEnv(): Env {
   }
   if (!parsed.success) {
     console.error('[env] invalid/missing environment variables:', parsed.error.flatten().fieldErrors);
+    throw new Error('Invalid environment configuration — see logs above.');
+  }
+  if (process.env.NODE_ENV === 'production' && !parsed.data.APP_BASE_URL) {
+    console.error('[env] invalid/missing environment variables: { APP_BASE_URL: [ "is required in production" ] }');
     throw new Error('Invalid environment configuration — see logs above.');
   }
   cached = parsed.data;
