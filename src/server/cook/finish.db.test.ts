@@ -31,10 +31,11 @@ async function makePantry(userId: string, qtyBase: number) {
 }
 
 async function makeRecipeWithSpinach(userId: string, needBase: number) {
-  const ingredients = JSON.stringify([
+  // sql.json like the app's store.ts; a JSON.stringify'd string would be double-encoded into a jsonb string.
+  const ingredients = tsql.json([
     { raw: `${needBase} g spinach`, qty: needBase, unit: 'g', name: 'spinach', normalizedName: 'spinach', dim: 'mass', qtyBase: needBase, isStaple: false, flags: [] },
   ]);
-  const steps = JSON.stringify([{ index: 0, text: 'Wilt the spinach.', timerSeconds: null }]);
+  const steps = tsql.json([{ index: 0, text: 'Wilt the spinach.', timerSeconds: null }]);
   const recipes = await tsql<Array<{ id: string }>>`
     INSERT INTO recipes (user_id, url_hash, source_url, site_name, title, extraction_method)
     VALUES (${userId}, ${`test-${uid()}`}, ${`https://example.test/${uid()}`}, 'example', 'Spinach', 'jsonld')
@@ -43,7 +44,7 @@ async function makeRecipeWithSpinach(userId: string, needBase: number) {
   const recipeId = recipes[0]!.id;
   const variants = await tsql<Array<{ id: string }>>`
     INSERT INTO recipe_variants (recipe_id, kind, servings, ingredients, steps)
-    VALUES (${recipeId}, 'original', 1, ${ingredients}, ${steps})
+    VALUES (${recipeId}, 'original', 1, ${ingredients as never}, ${steps as never})
     RETURNING id
   `;
   return { recipeId, variantId: variants[0]!.id };
