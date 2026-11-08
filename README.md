@@ -8,6 +8,8 @@ Full product spec, data model, and API contracts live in [`SPEC.md`](./SPEC.md).
 
 - Node.js >= 22 (`node -v`)
 - npm
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud --version`), used to sign in to Vertex AI for Gemini
+- Access to the team's Google Cloud project: ask the project owner to grant your Google account the **Vertex AI User** role (`roles/aiplatform.user`)
 
 ## Setup
 
@@ -17,6 +19,35 @@ npm install
 
 This also runs `scripts/copy-assets.mjs` (`postinstall`), which copies the MediaPipe and zxing WASM binaries into `public/` so the browser loads them locally instead of from a CDN.
 
+### Environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the values (ask a teammate for the shared Auth0, database and barcode keys). See `SPEC.md` §8 for the full list.
+
+### Gemini (Vertex AI)
+
+Gemini runs on Vertex AI with Application Default Credentials (ADC), so there is no Gemini API key. Each developer signs in with their own Google account:
+
+```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project <PROJECT_ID>
+```
+
+Then set `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` in `.env.local` (`GOOGLE_CLOUD_LOCATION` defaults to `us-central1`). Check it works with:
+
+```bash
+node --env-file=.env.local scripts/gemini-smoke.mjs
+```
+
+### Database
+
+```bash
+npm run migrate
+```
+
 ## Running locally
 
 ```bash
@@ -25,12 +56,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The app currently runs against stub data where backend work is still in progress:
-- `src/lib/current-user.ts` returns a placeholder user until Auth0 wiring lands.
 - Cook mode can run against fixtures by setting `NEXT_PUBLIC_COOK_FIXTURES=true`.
-- `/api/tts` needs `ELEVENLABS_API_KEY` set to return real audio; without it, voice features won't produce speech.
+- `/api/tts` uses ElevenLabs when `ELEVENLABS_API_KEY` is set; without it, voice falls back to the browser's built-in speech.
 
-There is no `.env.example` yet — add required secrets (Auth0, database, Gemini, ElevenLabs) to a local `.env` as the corresponding workstreams land. See `SPEC.md` §8 for the full environment variable list.
+## Deployment
+
+Production runs with `docker compose up -d --build` on the VPS. The server can't sign in through a browser, so it uses a service-account key:
+
+1. Create a service account with the **Vertex AI User** role and download its key as `gcp-sa.json`.
+2. Copy it next to `docker-compose.yml` on the server (`chmod 600`). It is gitignored; never commit or share it.
+3. Put `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION` in `.env.production`. `docker-compose.yml` mounts the key and sets `GOOGLE_APPLICATION_CREDENTIALS`.
 
 ## Other scripts
 

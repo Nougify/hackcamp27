@@ -7,7 +7,7 @@ import { Button, Dialog } from '@/components/ui';
 import { UNIT_LABELS } from '@/features/pantry/labels';
 import { scanApi } from '@/features/scan/api';
 import type { ScannedCode } from '@/features/scan/BarcodeScanner';
-import { amountError, amountInStock, loggableUnits, nutritionForAmount, type FoodSource } from './amounts';
+import { amountError, amountInStock, itemSource, loggableUnits, nutritionForAmount, productSource, type FoodSource } from './amounts';
 import { mealsApi } from './api';
 
 // SPEC UF9: From pantry, Scan, or Quick add.
@@ -32,29 +32,22 @@ function Problem({ children }: { children: React.ReactNode }) {
   );
 }
 
-function itemSource(item: PantryItem): FoodSource {
-  return { basis: item.nutritionBasis, nutrition: item.nutrition, stockDim: item.dim, gramsPerUnit: item.gramsPerUnit, densityGPerMl: item.densityGPerMl };
-}
-
-function productSource(product: Product): FoodSource {
-  return { basis: product.basis, nutrition: product.per100, stockDim: null, gramsPerUnit: null, densityGPerMl: null };
-}
-
-/** Amount, unit and a live preview. `unit` falls back to the first unit this food supports. */
+/** Amount, unit and a live preview. */
 function AmountFields({
   source,
+  units,
   amount,
   setAmount,
   unit,
   setUnit,
 }: {
   source: FoodSource;
+  units: DisplayUnit[];
   amount: string;
   setAmount: (v: string) => void;
   unit: DisplayUnit;
   setUnit: (u: DisplayUnit) => void;
 }) {
-  const units = loggableUnits(source);
   const n = parse(amount);
   const result = nutritionForAmount(source, n, unit);
   return (
@@ -99,7 +92,7 @@ function FromPantry({ items, onDone }: { items: PantryItem[]; onDone: (label: st
   if (!item) return <p className="text-sm text-muted">Your pantry is empty. Use Scan or Quick add instead.</p>;
 
   const source = itemSource(item);
-  const units = loggableUnits(source);
+  const units = loggableUnits(source, deduct);
   const unit = chosenUnit && units.includes(chosenUnit) ? chosenUnit : units.includes(item.displayUnit) ? item.displayUnit : units[0];
   const n = parse(amount);
   const canLog = unit !== undefined && nutritionForAmount(source, n, unit).ok;
@@ -142,7 +135,7 @@ function FromPantry({ items, onDone }: { items: PantryItem[]; onDone: (label: st
       {unit === undefined ? (
         <Problem>{amountError('no_conversion')}</Problem>
       ) : (
-        <AmountFields source={source} amount={amount} setAmount={setAmount} unit={unit} setUnit={setChosenUnit} />
+        <AmountFields source={source} units={units} amount={amount} setAmount={setAmount} unit={unit} setUnit={setChosenUnit} />
       )}
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" checked={deduct} onChange={(e) => setDeduct(e.target.checked)} /> Also remove from pantry
@@ -162,6 +155,7 @@ function FromScan({ onDone }: { onDone: (label: string) => void }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [looking, setLooking] = useState(false);
+  const [failedGtin, setFailedGtin] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [chosenUnit, setChosenUnit] = useState<DisplayUnit | null>(null);
   const [saving, setSaving] = useState(false);
@@ -173,12 +167,15 @@ function FromScan({ onDone }: { onDone: (label: string) => void }) {
     try {
       const r = await scanApi.lookup(code.lookupCode);
       if (r.status === 'found') {
+        setFailedGtin(null);
         setProduct(r.product);
         setAmount(r.product.servingSize ? String(r.product.servingSize.value) : '');
       } else {
+        setFailedGtin(code.gtin);
         setNotice(r.status === 'not_found' ? "We couldn't find this product. Use Quick add instead." : "That barcode doesn't look valid");
       }
     } catch (e) {
+      setFailedGtin(code.gtin);
       setNotice(e instanceof Error ? e.message : 'Could not look up that barcode.');
     } finally {
       setLooking(false);
@@ -192,7 +189,7 @@ function FromScan({ onDone }: { onDone: (label: string) => void }) {
       </p>
     );
   }
-  if (!product) return <BarcodeScanner onCode={(c) => void lookup(c)} notice={notice} />;
+  if (!product) return <BarcodeScanner onCode={(c) => void lookup(c)} notice={notice} ignoreGtin={failedGtin} />;
 
   const source = productSource(product);
   const units = loggableUnits(source);
@@ -221,13 +218,21 @@ function FromScan({ onDone }: { onDone: (label: string) => void }) {
         {product.brand && <p className="text-sm text-muted">{product.brand}</p>}
         <p className="mt-1 text-xs text-muted">Product data: Open Food Facts (ODbL)</p>
       </div>
-      {unit !== undefined && <AmountFields source={source} amount={amount} setAmount={setAmount} unit={unit} setUnit={setChosenUnit} />}
+      {unit !== undefined && <AmountFields source={source} units={units} amount={amount} setAmount={setAmount} unit={unit} setUnit={setChosenUnit} />}
       {error && <Problem>{error}</Problem>}
       <div className="flex gap-3">
         <Button type="submit" disabled={!canLog || saving}>
           {saving ? 'Logging…' : 'Log food'}
         </Button>
-        <Button variant="secondary" onClick={() => setProduct(null)}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setProduct(null);
+            setChosenUnit(null);
+            setAmount('');
+            setError(null);
+          }}
+        >
           Scan another
         </Button>
       </div>

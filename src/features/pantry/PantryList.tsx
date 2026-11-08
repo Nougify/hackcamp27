@@ -16,6 +16,8 @@ import { ProductForm, type ProductFormValues } from './ProductForm';
 
 type Sort = 'expiry' | 'name';
 
+const withoutFloatNoise = (n: number | null) => (n === null ? null : Number(n.toFixed(6)));
+
 export function PantryList({ initialItems, graceDays, addSlot }: { initialItems: PantryItem[]; graceDays: number; addSlot?: React.ReactNode }) {
   const toast = useToast();
   const [items, setItems] = useState(initialItems);
@@ -157,9 +159,10 @@ export function PantryList({ initialItems, graceDays, addSlot }: { initialItems:
             key={editing.id}
             initial={{
               ...editing,
-              quantity: fromBase(editing.quantityBase, editing.dim, editing.displayUnit),
+              quantity: withoutFloatNoise(fromBase(editing.quantityBase, editing.dim, editing.displayUnit)),
               expiryRawText: null,
             }}
+            allowZeroQuantity
             submitLabel="Save changes"
             onSubmit={(v) => saveEdit(editing, v)}
             onCancel={() => setEditing(null)}
@@ -217,7 +220,8 @@ function PantryRow({
   const empty = item.quantityBase <= 0;
   const current = fromBase(item.quantityBase, item.dim, item.displayUnit) ?? 0;
   const [adjusting, setAdjusting] = useState(false);
-  const [value, setValue] = useState(String(Math.round(current * 100) / 100));
+  const prefill = String(Math.round(current * 100) / 100);
+  const [value, setValue] = useState(prefill);
   const nutrition = itemNutritionLines(item);
 
   return (
@@ -258,7 +262,8 @@ function PantryRow({
             className="flex flex-wrap items-center gap-2"
             onSubmit={async (e) => {
               e.preventDefault();
-              const q = Number(value.replace(',', '.'));
+              if (value.trim() === prefill) return setAdjusting(false); // the prefill is rounded; saving it would change the stock
+              const q = value.trim() === '' ? Number.NaN : Number(value.replace(',', '.'));
               if (!Number.isFinite(q) || q < 0) return;
               await onAdjust(q);
               setAdjusting(false);
@@ -288,7 +293,13 @@ function PantryRow({
               </Button>
             ) : (
               <>
-                <Button variant="secondary" onClick={() => setAdjusting(true)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setValue(prefill);
+                    setAdjusting(true);
+                  }}
+                >
                   Adjust
                 </Button>
                 <Button variant="secondary" onClick={() => void onDiscard()}>

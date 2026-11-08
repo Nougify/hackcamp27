@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { DailyTotals } from '@/contracts/domain';
 import { CHART_COLOR, columnPath, niceCeil, weekdayLabel } from './chart';
 
@@ -13,12 +13,11 @@ const MAX_COLUMN = 24;
 const INITIAL_WIDTH = 560;
 
 export function WeekChart({ days }: { days: DailyTotals[] }) {
-  const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(INITIAL_WIDTH);
   const [active, setActive] = useState<number | null>(null);
 
-  useEffect(() => {
-    const box = boxRef.current;
+  // A callback ref: the box doesn't exist until the first meal replaces the empty state.
+  const observeBox = useCallback((box: HTMLDivElement | null) => {
     if (!box) return;
     const observer = new ResizeObserver(([entry]) => setWidth(Math.max(240, entry.contentRect.width)));
     observer.observe(box);
@@ -44,7 +43,7 @@ export function WeekChart({ days }: { days: DailyTotals[] }) {
 
   return (
     <div>
-      <div ref={boxRef} className="relative">
+      <div ref={observeBox} className="relative">
         <svg width={width} height={HEIGHT} className="block max-w-full" role="group" aria-label="Calories per day, last 7 days">
           {[0, top / 2, top].map((tick) => (
             <g key={tick}>

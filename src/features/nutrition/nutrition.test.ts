@@ -10,6 +10,15 @@ const yogurt: FoodSource = {
   densityGPerMl: null,
 };
 
+describe('loggableUnits when not deducting', () => {
+  const eggs: FoodSource = { ...yogurt, stockDim: 'count' };
+
+  it('needs a stock conversion only when the pantry is deducted', () => {
+    expect(loggableUnits(eggs)).toEqual([]);
+    expect(loggableUnits(eggs, false)).toContain('g');
+  });
+});
+
 describe('nutritionForAmount', () => {
   it('computes 170 g of yogurt (F15 AC1)', () => {
     expect(nutritionForAmount(yogurt, 170, 'g')).toEqual({ ok: true, meal: { kcal: 100.3, proteinG: 17, carbsG: 6.1, fatG: 0.7 } });

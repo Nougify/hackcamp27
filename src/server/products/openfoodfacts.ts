@@ -1,3 +1,4 @@
+import 'server-only';
 import type { Nutrients } from '@/contracts/domain';
 import { kcalFromKj, mapAllergens, num, parsePackageText, round, servingFrom, sodiumMgFrom, str, type PackageQuantity } from './parse';
 import { fetchProvider, type ParsedResponse, type ProviderResult } from './provider';

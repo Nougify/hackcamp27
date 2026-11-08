@@ -51,6 +51,10 @@ describe('CFIA regex', () => {
 });
 
 describe('assembleDate', () => {
+  it('caps rawText at the length the pantry schema accepts', () => {
+    expect(assembleDate(date({ raw_text: 'x'.repeat(300) }), '2026-11-07').rawText).toHaveLength(200);
+  });
+
   it('uses a printed year', () => {
     const r = assembleDate(date({ year: 2026, year_was_printed: true }), '2026-11-07');
     expect(r).toMatchObject({ suggestedDate: '2026-11-15', yearInferred: false, needsUserChoice: false, candidates: ['2026-11-15'] });

@@ -8,10 +8,10 @@ import { listPantry } from '@/server/pantry/repo';
 export default async function TodayPage() {
   const { user, profile } = await requireOnboardedProfile();
   const grace = profile.pastBestBeforeGraceDays ?? 0;
-  const totals = await getTodayTotals(user);
+  const totals = await getTodayTotals(user, profile);
   const [meals, history, pantry] = await Promise.all([
     listMeals(user.id, totals.date),
-    getHistory(user, 7),
+    getHistory(user, 7, profile),
     listPantry(user.id, user.tz, { sort: 'expiry', includeEmpty: false }),
   ]);
 

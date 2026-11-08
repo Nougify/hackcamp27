@@ -20,15 +20,13 @@ import { draftToFormInitial, productToFormInitial } from './pure';
 const BarcodeScanner = dynamic(() => import('./BarcodeScanner').then((m) => m.BarcodeScanner), { ssr: false });
 
 type Step =
-  | { kind: 'scan'; notice?: string }
+  | { kind: 'scan'; notice?: string; ignoreGtin?: string }
   | { kind: 'looking' }
   | { kind: 'found'; product: Product }
   | { kind: 'not_found'; gtin: string }
   | { kind: 'label'; gtin: string | null; message?: string }
   | { kind: 'draft'; response: LabelExtractionResponse }
   | { kind: 'manual'; gtin: string | null };
-
-const SAME_CODE_WINDOW_MS = 1000;
 
 function FoundCard({ product }: { product: Product }) {
   const kcal = product.per100.energyKcal;
@@ -58,31 +56,35 @@ export function AddProductFlow() {
   const toast = useToast();
   const [step, setStep] = useState<Step>({ kind: 'scan' });
   const [readingLabel, setReadingLabel] = useState(false);
-  const lastCode = useRef<{ gtin: string; at: number } | null>(null);
+  // Bumped whenever the user moves on, so a slow response can't replace what they're doing now.
+  const latestRequest = useRef(0);
 
   async function lookup(code: ScannedCode) {
-    const now = Date.now();
-    if (lastCode.current?.gtin === code.gtin && now - lastCode.current.at < SAME_CODE_WINDOW_MS) return;
-    lastCode.current = { gtin: code.gtin, at: now };
+    const request = ++latestRequest.current;
     setStep({ kind: 'looking' });
     try {
       // lookupCode, not gtin: it keeps an EAN-8 as 8 digits for the providers.
       const r = await scanApi.lookup(code.lookupCode);
+      if (request !== latestRequest.current) return;
       if (r.status === 'found') setStep({ kind: 'found', product: r.product });
       else if (r.status === 'not_found') setStep({ kind: 'not_found', gtin: r.gtin });
-      else setStep({ kind: 'scan', notice: "That barcode doesn't look valid" });
+      else setStep({ kind: 'scan', notice: "That barcode doesn't look valid", ignoreGtin: code.gtin });
     } catch (e) {
-      setStep({ kind: 'scan', notice: e instanceof Error ? e.message : 'Could not look up that barcode.' });
+      if (request !== latestRequest.current) return;
+      setStep({ kind: 'scan', notice: e instanceof Error ? e.message : 'Could not look up that barcode.', ignoreGtin: code.gtin });
     }
   }
 
   async function readLabel(photos: Blob[], gtin: string | null) {
+    const request = ++latestRequest.current;
     setReadingLabel(true);
     try {
       const response = await scanApi.readLabel(photos, gtin);
+      if (request !== latestRequest.current) return;
       if (response.isFoodProduct) setStep({ kind: 'draft', response });
       else setStep({ kind: 'label', gtin, message: "That doesn't look like a food product. Try another photo, or enter it by hand." });
     } catch (e) {
+      if (request !== latestRequest.current) return;
       setStep({ kind: 'label', gtin, message: e instanceof Error ? e.message : "We couldn't read that photo." });
     } finally {
       setReadingLabel(false);
@@ -101,7 +103,7 @@ export function AddProductFlow() {
 
   return (
     <div className="grid gap-6">
-      {step.kind === 'scan' && <BarcodeScanner onCode={(c) => void lookup(c)} notice={step.notice} />}
+      {step.kind === 'scan' && <BarcodeScanner onCode={(c) => void lookup(c)} notice={step.notice} ignoreGtin={step.ignoreGtin} />}
 
       {step.kind === 'looking' && (
         <p role="status" className="text-sm text-muted">
@@ -186,7 +188,13 @@ export function AddProductFlow() {
 
       {step.kind !== 'manual' && step.kind !== 'draft' && step.kind !== 'not_found' && (
         <div>
-          <Button variant="ghost" onClick={() => setStep({ kind: 'manual', gtin: step.kind === 'found' ? step.product.gtin : null })}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              latestRequest.current++;
+              setStep({ kind: 'manual', gtin: step.kind === 'found' ? step.product.gtin : null });
+            }}
+          >
             Enter manually
           </Button>
         </div>
