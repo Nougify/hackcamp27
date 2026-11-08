@@ -1,6 +1,9 @@
 import { z } from "zod";
 import type { ApiError, ApiErrorCode } from "@/contracts";
 import { requireUser } from "@/lib/current-user";
+import { RateLimitedError } from "@/lib/errors";
+import { handleRouteError } from "@/lib/http";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -11,9 +14,15 @@ function fail(status: number, code: ApiErrorCode, message: string) {
 }
 
 // SPEC §10.5: proxy ElevenLabs HTTP streaming. Any error → client falls back to speechSynthesis.
-// ponytail: no per-user rate limit (60/min) until Hang's src/lib/rate-limit.ts lands.
 export async function POST(req: Request) {
-  await requireUser();
+  let userId: string;
+  try {
+    userId = (await requireUser()).id; // signed out → 401, not a crash
+  } catch (e) {
+    return handleRouteError(e);
+  }
+  const limit = checkRateLimit(userId, "tts"); // 60/min per user (SPEC §7)
+  if (!limit.ok) return handleRouteError(new RateLimitedError("Too many read-aloud requests", limit.retryAfterMs));
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail(400, "BAD_REQUEST", "text must be 1–2000 characters");
