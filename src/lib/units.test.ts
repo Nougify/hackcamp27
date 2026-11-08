@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertBetween, formatQty, fromBase, parseUnit, toBase } from './units';
+import { convertBetween, formatQty, fromBase, isDisplayUnit, parseUnit, toBase, unitDim, unitsForDim } from './units';
 
 describe('toBase / fromBase', () => {
   it('converts every mass factor', () => {
@@ -108,5 +108,67 @@ describe('formatQty', () => {
 
   it('honours a preferred unit matching the dimension', () => {
     expect(formatQty(2000, 'mass', 'g')).toBe('2000 g');
+  });
+});
+
+// ── Johnny's additions: hardening and extra aliases ─────────────────────────
+describe('hardening', () => {
+  it('rejects non-finite quantities and prototype keys', () => {
+    expect(toBase(Number.NaN, 'g')).toBeNull();
+    expect(toBase(Infinity, 'g')).toBeNull();
+    expect(toBase(1, 'constructor' as never)).toBeNull();
+    expect(fromBase(1, 'mass', 'toString' as never)).toBeNull();
+    expect(formatQty(350, 'mass', '__proto__' as never)).toBe('350 g');
+  });
+
+  it('treats zero, negative or missing bridges as no bridge', () => {
+    expect(convertBetween(1, 'count', 'mass', { gramsPerUnit: 0 })).toBeNull();
+    expect(convertBetween(1, 'volume', 'mass', { densityGPerMl: -1 })).toBeNull();
+    expect(convertBetween(1, 'count', 'mass', { gramsPerUnit: null })).toBeNull();
+    expect(convertBetween(1, 'mass', 'volume', { densityGPerMl: null })).toBeNull();
+  });
+
+  it('every SPEC §5.4 factor', () => {
+    const cases: Array<[Parameters<typeof toBase>[1], 'mass' | 'volume' | 'count', number]> = [
+      ['g', 'mass', 1], ['kg', 'mass', 1000], ['oz', 'mass', 28.3495], ['lb', 'mass', 453.592],
+      ['ml', 'volume', 1], ['l', 'volume', 1000], ['tsp', 'volume', 4.92892], ['tbsp', 'volume', 14.7868],
+      ['cup', 'volume', 236.588], ['fl_oz', 'volume', 29.5735], ['pcs', 'count', 1],
+    ];
+    for (const [unit, dim, factor] of cases) expect(toBase(1, unit)).toEqual({ dim, qtyBase: factor });
+  });
+});
+
+describe('parseUnit: more aliases', () => {
+  it.each([
+    ['g', 'g'], ['Gram', 'g'], ['gr', 'g'], ['gms', 'g'],
+    ['kilo', 'kg'], ['kgs', 'kg'],
+    ['ounces', 'oz'], ['Pounds', 'lb'],
+    ['mL', 'ml'], ['milliliters', 'ml'], ['cc', 'ml'],
+    ['L', 'l'], ['liters', 'l'], ['ltr', 'l'],
+    ['teaspoons', 'tsp'], ['tsp.', 'tsp'], ['t', 'tsp'],
+    ['TBSP', 'tbsp'], ['tbs', 'tbsp'], ['T', 'tbsp'], ['Tbs', 'tbsp'],
+    ['Cups', 'cup'], ['c', 'cup'], ['C', 'cup'],
+    ['fl oz', 'fl_oz'], ['fl. oz.', 'fl_oz'], ['fluid ounces', 'fl_oz'], ['fl_oz', 'fl_oz'], ['floz', 'fl_oz'], ['fluidounce', 'fl_oz'],
+    ['piece', 'pcs'], ['pc', 'pcs'], ['cloves', 'pcs'], ['ea', 'pcs'], ['whole', 'pcs'],
+    ['  grams  ', 'g'],
+  ])('parses %j as %s', (raw, expected) => {
+    expect(parseUnit(raw)).toBe(expected);
+  });
+
+  it.each(['pinch', 'to taste', 'dash', 'handful', '', 'constructor', 'toString', '__proto__', 'hasOwnProperty'])(
+    'returns null for %j',
+    (raw) => {
+      expect(parseUnit(raw)).toBeNull();
+    },
+  );
+});
+
+describe('helpers', () => {
+  it('isDisplayUnit / unitDim / unitsForDim', () => {
+    expect(isDisplayUnit('tbsp')).toBe(true);
+    expect(isDisplayUnit('constructor')).toBe(false);
+    expect(unitDim('cup')).toBe('volume');
+    expect(unitsForDim('count')).toEqual(['pcs']);
+    expect(unitsForDim('mass')).toEqual(['g', 'kg', 'oz', 'lb']);
   });
 });
