@@ -18,29 +18,8 @@ type Seg = {
   toY?: number;
   /** hand bbox height, fraction of frame */
   size?: number;
-  /** realistic landmarks for an index finger pointing toward the screen's right/left, or up */
-  point?: 'right' | 'left' | 'up';
-  /** finger droop for sideways points: dy = tilt·dx (normalized); 0 = level */
-  tilt?: number;
-  /** classifier score, when it differs from the hand-detection score (`score`) */
-  gestureScore?: number;
 };
 
-/** Index straight, other fingers curled. Raw (unmirrored) camera coords, so screen-right = raw -x. */
-function pointLandmarks(dir: 'right' | 'left' | 'up', shiftX = 0, tilt = 0) {
-  const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
-  lm[0] = { x: 0.5, y: 0.62 }; // wrist
-  lm[9] = { x: 0.5, y: 0.47 }; // middle MCP (palm size 0.15)
-  for (const [pip, tip] of [[10, 12], [14, 16], [18, 20]]) {
-    lm[pip] = { x: 0.5, y: 0.45 };
-    lm[tip] = { x: 0.5, y: 0.55 }; // curled: tip back toward the wrist
-  }
-  const sx = dir === 'right' ? -1 : dir === 'left' ? 1 : 0;
-  const sy = dir === 'up' ? -1 : tilt;
-  lm[5] = { x: 0.5, y: 0.48 };
-  for (const [i, k] of [[6, 0.05], [7, 0.09], [8, 0.13]] as const) lm[i] = { x: 0.5 + sx * k, y: 0.48 + sy * k };
-  return lm.map((p) => ({ x: p.x + shiftX, y: p.y }));
-}
 
 function frame(pose: CannedGesture, score: number, mx: number, y: number, size: number): EngineFrame {
   const x = 1 - mx; // engine input is unmirrored
@@ -77,16 +56,7 @@ class Rig {
         const f: EngineFrame =
           s.hand === false
             ? { hand: null }
-            : s.point
-              ? {
-                  hand: {
-                    landmarks: pointLandmarks(s.point, 0.5 - this.mx, s.tilt),
-                    gesture: s.pose ?? 'None',
-                    score: s.gestureScore ?? s.score ?? 0.9,
-                    handScore: s.gestureScore !== undefined ? s.score ?? 0.95 : undefined,
-                  },
-                }
-              : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
+            : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
         for (const a of this.engine.update(f, t)) this.actions.push({ a, t });
         this.frameIdx++;
       }
@@ -270,69 +240,42 @@ describe('scroll', () => {
   });
 });
 
-describe('pointing (next / previous step)', () => {
-  it('pointing toward the screen right for 800 ms → exactly one NEXT_STEP, even if held', () => {
-    const r = armed().run({ point: 'right', ms: 800 });
+describe('next / previous step (built-in Pointing_Up / ILoveYou)', () => {
+  it('Pointing_Up held 800 ms → exactly one NEXT_STEP, even if held longer', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 800 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
-    r.run({ point: 'right', ms: 3000 });
+    r.run({ pose: 'Pointing_Up', ms: 3000 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
   });
 
-  it('pointing toward the screen left → PREV_STEP', () => {
-    const r = armed().run({ point: 'left', ms: 800 });
+  it('ILoveYou held 800 ms → PREV_STEP', () => {
+    const r = armed().run({ pose: 'ILoveYou', ms: 800 });
     expect(r.names()).toEqual(['ARM', 'PREV_STEP']);
   });
 
-  it('wins over a misleading classifier label (e.g. Closed_Fist)', () => {
-    const r = armed().run({ point: 'right', pose: 'Closed_Fist', ms: 800 });
-    expect(r.names()).toEqual(['ARM', 'NEXT_STEP']);
-  });
-
   it('a short point does nothing', () => {
-    const r = armed().run({ point: 'right', ms: 600 }, { pose: 'Open_Palm', ms: 500 });
+    const r = armed().run({ pose: 'Pointing_Up', ms: 600 }, { pose: 'Open_Palm', ms: 500 });
     expect(r.names()).toEqual(['ARM']);
   });
 
   it('release, then point again → second step after the cooldown', () => {
-    const r = armed().run({ point: 'right', ms: 800 }, { pose: 'Open_Palm', ms: 300 }, { point: 'right', ms: 1800 });
+    const r = armed().run({ pose: 'Pointing_Up', ms: 800 }, { pose: 'Open_Palm', ms: 300 }, { pose: 'Pointing_Up', ms: 1800 });
     const [a, b] = r.of('NEXT_STEP');
     expect(b.t - a.t).toBeGreaterThanOrEqual(1200);
   });
 
-  it('pointing up is not next/previous', () => {
-    const r = armed().run({ point: 'up', ms: 3000 });
+  it('a low-confidence point never fires', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 3000, score: 0.5 });
     expect(r.names()).toEqual(['ARM']);
   });
 
-  it('fires when the classifier scores the pose ~0 but the hand is clearly detected (real MediaPipe output)', () => {
-    const r = armed().run({ point: 'right', gestureScore: 0.05, score: 0.95, ms: 800 });
+  it('one jittery frame mid-point does not fire a second step', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 900 }, { pose: 'None', ms: 0 }, { pose: 'Pointing_Up', ms: 3000 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
-    expect(r.engine.hud(r.now).hint).toBeNull();
-  });
-
-  it('a low-confidence point never fires (dim kitchen, blurred hand)', () => {
-    const r = armed().run({ point: 'right', ms: 3000, score: 0.5 });
-    expect(r.names()).toEqual(['ARM']);
-  });
-
-  it('a moving point (finger on a knife spine while chopping) never fires', () => {
-    const r = armed();
-    for (let i = 0; i < 10; i++) r.run({ point: 'right', ms: 300, x: 0.4, toX: 0.6 }, { point: 'right', ms: 300, x: 0.6, toX: 0.4 });
-    expect(r.of('NEXT_STEP')).toHaveLength(0);
-  });
-
-  it('a slight droop mid-hold does not break the hold (no second step)', () => {
-    const r = armed().run({ point: 'right', ms: 800 }, { point: 'right', tilt: 1.3, ms: 300 }, { point: 'right', ms: 3000 });
-    expect(r.of('NEXT_STEP')).toHaveLength(1);
-  });
-
-  it('a strongly tilted finger is not a sideways point', () => {
-    const r = armed().run({ point: 'right', tilt: 2, ms: 3000 });
-    expect(r.of('NEXT_STEP')).toHaveLength(0);
   });
 
   it('does nothing while unarmed', () => {
-    const r = mk().run({ point: 'right', ms: 3000 }, { point: 'left', ms: 3000 });
+    const r = mk().run({ pose: 'Pointing_Up', ms: 3000 }, { pose: 'ILoveYou', ms: 3000 });
     expect(r.actions).toEqual([]);
   });
 });

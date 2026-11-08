@@ -1588,7 +1588,7 @@ No published thresholds exist for kitchen gesture control. Every number below is
 | User control (confirmed) | Gesture | Fires | Why |
 |---|---|---|---|
 | *(prerequisite)* Arm | `Open_Palm` held ≥ **600 ms** | `ARM`, armed for **5 s**. The window extends after each action | Stirring, chopping and reaching never fire commands |
-| Next / previous step | **Index finger pointing right / left**, held ≥ **800 ms**, while armed (detected from landmarks; replaced swipes, which didn't fire reliably in testing) | `NEXT_STEP` / `PREV_STEP` (once per hold) | Pointing toward the screen's right = next, left = previous (mirrored view) |
+| Next / previous step | **`Pointing_Up` = next, `ILoveYou` (🤟) = previous**, held ≥ **800 ms**, while armed | `NEXT_STEP` / `PREV_STEP` (once per hold) | Built-in classifier gestures. Swipes and a custom landmark-based sideways point both failed in webcam tests |
 | Scroll up / down | `Thumb_Up` / `Thumb_Down` held | First tick at **600 ms**, then every **700 ms** while held, each scrolling **40% of the viewport** | Avoids up/down swipes, which collide with stirring and reaching |
 | Start / pause step timer | `Closed_Fist` held ≥ **800 ms**, score ≥ **0.8** | `TIMER_TOGGLE` (once per hold) | Distinct pose. A long hold and high score guard against a fist around a spoon handle |
 | Read step aloud / stop | `Victory` held ≥ **800 ms** | `SPEAK_TOGGLE` (once per hold) | Rare in kitchen motion and easier to form than ILoveYou |

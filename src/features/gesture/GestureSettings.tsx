@@ -36,7 +36,7 @@ export function GestureSettings({
           />
         </Field>
 
-        <Field label="Hold time" hint="How long to hold a point, fist or victory sign.">
+        <Field label="Hold time" hint="How long to hold a point, 🤟, fist or victory sign.">
           <Select
             value={pick(HOLD, g.actionHoldMs)}
             options={{ short: "Short (0.5 s)", normal: "Normal (0.8 s)", long: "Long (1.2 s)" }}

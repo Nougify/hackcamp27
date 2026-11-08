@@ -3,7 +3,7 @@ import type { CannedGesture, GestureAction, GestureConfig, GestureHud, GestureSo
 import { GestureEngine, type EngineFrame } from "./engine";
 
 type HudError = NonNullable<GestureHud["error"]>;
-const ALLOW: CannedGesture[] = ["Open_Palm", "Closed_Fist", "Thumb_Up", "Thumb_Down", "Victory"];
+const ALLOW: CannedGesture[] = ["Open_Palm", "Closed_Fist", "Thumb_Up", "Thumb_Down", "Victory", "Pointing_Up", "ILoveYou"];
 const HUD_INTERVAL_MS = 100; // ≤ 10 Hz (contract)
 
 function idleHud(state: GestureHud["state"], error?: HudError): GestureHud {
@@ -25,7 +25,7 @@ export class MediaPipeGestureSource implements GestureSource {
   private lastHandAt = 0;
   private lastHudAt = 0;
   private frames: number[] = [];
-  /** Engine's internal pose (shows Point_Left/Right), for the debug overlay. */
+  /** Engine's current pose, for the debug overlay. */
   get debugPose() {
     return this.engine.debugPose;
   }
@@ -170,9 +170,7 @@ export class MediaPipeGestureSource implements GestureSource {
       const r = this.recognizer.recognizeForVideo(v, now);
       const lm = r.landmarks[0];
       const g = r.gestures[0]?.[0];
-      const aspect = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : undefined;
-      const handScore = r.handedness[0]?.[0]?.score;
-      if (lm) frame = { hand: { landmarks: lm, gesture: (g?.categoryName || "None") as CannedGesture, score: g?.score ?? 0, handScore }, aspect };
+      if (lm) frame = { hand: { landmarks: lm, gesture: (g?.categoryName || "None") as CannedGesture, score: g?.score ?? 0 } };
       this.landmarks = lm ?? null;
     } catch {
       return; // a single bad frame is not fatal
