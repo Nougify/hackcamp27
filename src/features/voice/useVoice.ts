@@ -5,6 +5,7 @@ import type { SpeechEngine, VoicePlayer } from "@/contracts";
 import { normalizeForSpeech } from "./normalize";
 
 const FIRST_BYTE_MS = 1500;
+const BODY_MS = 8000;
 
 /** 0.1 s of 8-bit 8 kHz silence as a WAV blob URL; played in the "Start cooking" tap (autoplay policy). */
 function silentWavUrl(): string {
@@ -40,7 +41,7 @@ export function createVoicePlayer(): VoicePlayer & { dispose(): void } {
     if (p) return p;
     p = (async () => {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), FIRST_BYTE_MS);
+      let timer = setTimeout(() => ctrl.abort(), FIRST_BYTE_MS);
       try {
         const res = await fetch("/api/tts", {
           method: "POST",
@@ -51,6 +52,8 @@ export function createVoicePlayer(): VoicePlayer & { dispose(): void } {
         clearTimeout(timer);
         if (res.status === 503) elevenlabsOff = true;
         if (!res.ok) return null;
+        // Headers arrived; still cap the download so a stalled stream falls back to the device voice.
+        timer = setTimeout(() => ctrl.abort(), BODY_MS);
         return URL.createObjectURL(await res.blob());
       } catch {
         return null;

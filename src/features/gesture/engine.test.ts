@@ -157,9 +157,18 @@ describe('discrete pose actions', () => {
   it('a quick release does not beat the 1200 ms global cooldown', () => {
     const r = armed().run({ pose: 'Closed_Fist', ms: 800 });
     const first = r.of('TIMER_TOGGLE')[0].t;
-    r.run({ pose: 'Open_Palm', ms: 100 }, { pose: 'Closed_Fist', ms: 3000 });
+    r.run({ pose: 'Open_Palm', ms: 200 }, { pose: 'Closed_Fist', ms: 3000 });
     const second = r.of('TIMER_TOGGLE')[1].t;
     expect(second).toBeGreaterThanOrEqual(first + 1200 + 800);
+  });
+
+  it('one jittery frame mid-hold does not count as a release (no double toggle)', () => {
+    const r = armed().run(
+      { pose: 'Closed_Fist', ms: 900 },
+      { pose: 'None', ms: 0 }, // single misclassified frame
+      { pose: 'Closed_Fist', ms: 3000 },
+    );
+    expect(r.of('TIMER_TOGGLE')).toHaveLength(1);
   });
 
   it('fist with score 0.75 (below fistMinScore) does nothing', () => {
@@ -218,7 +227,7 @@ describe('scroll', () => {
   it('scroll ticks extend the armed window; release after scrolling adds a 300 ms cooldown', () => {
     const r = armed().run({ pose: 'Thumb_Up', ms: 700 });
     expect(r.of('SCROLL_UP')).toHaveLength(1);
-    r.run({ pose: 'Open_Palm', ms: 70 });
+    r.run({ pose: 'Open_Palm', ms: 200 });
     expect(r.engine.hud(r.now - FRAME_MS).state).toBe('cooldown');
     r.run({ pose: 'Open_Palm', ms: 400 });
     expect(r.engine.hud(r.now - FRAME_MS).state).toBe('armed');

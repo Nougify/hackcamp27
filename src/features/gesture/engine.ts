@@ -24,6 +24,8 @@ const EDGE = 0.01;
 const MORE_LIGHT_MS = 3000;
 const SCROLL_RELEASE_COOLDOWN_MS = 300;
 const EMA_ALPHA = 0.5;
+// A new pose must persist this long before it counts, so one jittery frame can't break a hold (≈2 frames at 15 fps).
+const POSE_SETTLE_MS = 150;
 
 export class GestureEngine {
   private cfg: GestureConfig;
@@ -31,6 +33,8 @@ export class GestureEngine {
   private lastSeen = 0;
   private pose: CannedGesture = 'None';
   private poseSince = 0;
+  private cand: CannedGesture = 'None'; // raw pose waiting to settle
+  private candSince = 0;
   private fired = false;         // one-shot latch per continuous pose hold (ARM or discrete action)
   private needRelease = false;   // discrete pose action fired; pose must change before re-arming
   private cooldownUntil = 0;
@@ -56,6 +60,8 @@ export class GestureEngine {
     this.lastSeen = 0;
     this.pose = 'None';
     this.poseSince = 0;
+    this.cand = 'None';
+    this.candSince = 0;
     this.fired = false;
     this.needRelease = false;
     this.cooldownUntil = 0;
@@ -110,17 +116,24 @@ export class GestureEngine {
     if (this.lowSince !== null && now - this.lowSince >= MORE_LIGHT_MS) hint = 'more_light';
     this.hint = hint;
 
-    const pose: CannedGesture =
+    const raw: CannedGesture =
       low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture;
-    if (pose !== this.pose) {
+    if (raw !== this.cand) {
+      this.cand = raw;
+      this.candSince = now;
+    }
+    if (this.cand !== this.pose && now - this.candSince >= POSE_SETTLE_MS) {
       if (this.scrolled) this.cooldownUntil = Math.max(this.cooldownUntil, now + SCROLL_RELEASE_COOLDOWN_MS);
       this.scrolled = false;
       this.nextScroll = null;
       this.needRelease = false;
       this.fired = false;
-      this.pose = pose;
-      this.poseSince = now;
+      this.pose = this.cand;
+      this.poseSince = this.candSince; // hold timing counts from when the pose first appeared
     }
+    const pose = this.pose;
+    // Debouncing only protects the latch; actions need the pose to be showing right now.
+    const steady = raw === pose;
 
     // Palm centre, mirrored so directions match what the user sees, then EMA-smoothed.
     const sx = PALM.reduce((s, i) => s + h.landmarks[i].x, 0) / PALM.length;
@@ -132,7 +145,7 @@ export class GestureEngine {
 
     if (!this.isArmed()) {
       this.buf.length = 0;
-      if (pose === 'Open_Palm' && !this.fired && now - this.poseSince >= c.armHoldMs) {
+      if (steady && pose === 'Open_Palm' && !this.fired && now - this.poseSince >= c.armHoldMs) {
         this.fired = true; // latch: palm held through a later expiry does not instantly re-arm
         this.armedUntil = now + c.armWindowMs;
         emit('ARM');
@@ -149,7 +162,7 @@ export class GestureEngine {
     const discrete = DISCRETE[pose];
     const scroll = SCROLL[pose];
     let acted = false;
-    if (discrete && !this.fired && now - base >= c.actionHoldMs) {
+    if (steady && discrete && !this.fired && now - base >= c.actionHoldMs) {
       this.fired = true;
       this.needRelease = true;
       this.cooldownUntil = now + c.cooldownMs;
@@ -157,7 +170,7 @@ export class GestureEngine {
       this.buf.length = 0;
       emit(discrete);
       acted = true;
-    } else if (scroll) {
+    } else if (steady && scroll) {
       this.nextScroll ??= base + c.scrollFirstMs;
       if (now >= this.nextScroll) {
         this.nextScroll += c.scrollRepeatMs;
@@ -169,7 +182,7 @@ export class GestureEngine {
       }
     }
     if (!acted) {
-      const a = this.detectSwipe(now, pose === 'Closed_Fist');
+      const a = this.detectSwipe(now, raw === 'Closed_Fist');
       if (a) {
         this.cooldownUntil = now + c.cooldownMs;
         this.armedUntil = now + c.armWindowMs;
@@ -246,6 +259,8 @@ export class GestureEngine {
     this.fired = false;
     this.pose = 'None';
     this.poseSince = now;
+    this.cand = 'None';
+    this.candSince = now;
     this.buf = [];
     this.ema = null;
   }

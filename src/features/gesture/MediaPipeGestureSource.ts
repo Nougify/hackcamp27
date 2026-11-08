@@ -50,12 +50,20 @@ export class MediaPipeGestureSource implements GestureSource {
       .then((s) => ({ ok: true as const, s }))
       .catch((e: DOMException) => ({ ok: false as const, e }));
 
+    const releaseCamera = () => void camera.then((c) => c.ok && c.s.getTracks().forEach((t) => t.stop()));
     try {
       this.recognizer = await this.createRecognizer();
     } catch {
-      const c = await camera;
-      if (c.ok) c.s.getTracks().forEach((t) => t.stop());
+      // Report first: the camera prompt may never settle.
       if (!this.aborted) this.emitHud(idleHud("error", "ModelLoadFailed"));
+      releaseCamera();
+      return;
+    }
+    if (this.aborted) {
+      // Unmounted while loading: free WASM/GPU now, not after an unanswered prompt.
+      this.recognizer.close();
+      this.recognizer = null;
+      releaseCamera();
       return;
     }
 

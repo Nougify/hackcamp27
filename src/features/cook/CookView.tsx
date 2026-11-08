@@ -93,10 +93,12 @@ function Cooking({ view }: { view: CookSessionView }) {
   useEffect(() => voice?.onChange((speaking) => dispatch({ type: "speaking", speaking })), [voice]);
 
   // Warm the cache for the next step's audio (SPEC F13).
+  const usedVoice = useRef(false);
   useEffect(() => {
     const next = steps[state.stepIndex + 1];
-    if (started && next) voice?.prefetch(next.text);
-  }, [started, state.stepIndex, steps, voice]);
+    // Only spend TTS characters once read-aloud is actually in use.
+    if (started && next && (prefs.autoRead || usedVoice.current)) voice?.prefetch(next.text);
+  }, [started, state.stepIndex, steps, voice, prefs.autoRead]);
 
   // Persist on every change; debounce the server PATCH to 2 s (SPEC F11).
   useEffect(() => {
@@ -185,7 +187,8 @@ function Cooking({ view }: { view: CookSessionView }) {
       scroll: (direction) => {
         poke();
         const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-        window.scrollBy({ top: (direction === "down" ? 0.4 : -0.4) * innerHeight, behavior: reduce ? "auto" : "smooth" });
+        const f = prefs.gesture.scrollFraction;
+        window.scrollBy({ top: (direction === "down" ? f : -f) * innerHeight, behavior: reduce ? "auto" : "smooth" });
       },
       toggleTimer: () => {
         poke();
@@ -197,11 +200,12 @@ function Cooking({ view }: { view: CookSessionView }) {
       toggleSpeak: () => {
         poke();
         if (!voice) return;
+        usedVoice.current = true;
         if (voice.speaking) voice.stop();
         else void voice.speak(step.text, { cacheKey: `${session.id}:${step.index}` });
       },
     }),
-    [poke, step, session.id, voice],
+    [poke, step, session.id, voice, prefs.gesture.scrollFraction],
   );
 
   // Announce timer start/pause for the current step.
@@ -246,7 +250,7 @@ function Cooking({ view }: { view: CookSessionView }) {
     unlockAudio();
     void voice?.unlock();
     const first = steps[Math.min(resume?.stepIndex ?? 0, steps.length - 1)];
-    if (first) voice?.prefetch(first.text);
+    if (first && prefs.autoRead) voice?.prefetch(first.text);
     void wake.request();
     if (resume) dispatch({ type: "restore", stepIndex: resume.stepIndex, timers: resume.timers });
     else {
@@ -254,7 +258,8 @@ function Cooking({ view }: { view: CookSessionView }) {
       dispatch({ type: "restore", stepIndex: 0, timers: [] });
     }
     setStarted(true);
-    if (prefs.autoRead && first) void voice?.speak(first.text);
+    // If restore changes the step, the step-change effect reads it; otherwise read it here.
+    if (prefs.autoRead && first && first.index === state.stepIndex) void voice?.speak(first.text);
   };
 
   const exit = () => {

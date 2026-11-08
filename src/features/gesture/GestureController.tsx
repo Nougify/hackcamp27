@@ -109,7 +109,8 @@ export default function GestureController({
       else if (a === "TIMER_TOGGLE") c.toggleTimer();
       else if (a === "SPEAK_TOGGLE") c.toggleSpeak();
       c.source = undefined;
-      if (a !== "NEXT_STEP" && a !== "PREV_STEP") say(DONE[a]); // step changes announce themselves
+      // Step changes and timer start/pause are already announced by the cook view.
+      if (a !== "NEXT_STEP" && a !== "PREV_STEP" && a !== "TIMER_TOGGLE") say(DONE[a]);
       if (a !== "SCROLL_UP" && a !== "SCROLL_DOWN") {
         click();
         setFlash(Date.now());
@@ -170,14 +171,14 @@ export default function GestureController({
               strokeDashoffset={ring * (1 - (hud?.holdProgress ?? 0))}
             />
           </svg>
-          <p className="font-semibold leading-tight" role="status">
+          {/* Not a live region: it changes up to 10×/s. Fired actions are announced via `announce`. */}
+          <p className="font-semibold leading-tight">
             {hud ? chip(hud) : "Starting camera…"}
           </p>
         </div>
 
         {hud?.hint === "move_closer" && <p className="mt-1 text-warn">Move closer</p>}
         {hud?.hint === "more_light" && <p className="mt-1 text-warn">Turn on a light</p>}
-        {hud?.hint === "one_hand_only" && <p className="mt-1 text-warn">One hand please</p>}
         {DEBUG && hud && <p className="mt-1 font-mono text-xs text-muted">{hud.fps} fps · {hud.pose}</p>}
 
         {failed ? (
