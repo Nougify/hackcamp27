@@ -20,10 +20,12 @@ type Seg = {
   size?: number;
   /** realistic landmarks for an index finger pointing toward the screen's right/left, or up */
   point?: 'right' | 'left' | 'up';
+  /** finger droop for sideways points: dy = tilt·dx (normalized); 0 = level */
+  tilt?: number;
 };
 
 /** Index straight, other fingers curled. Raw (unmirrored) camera coords, so screen-right = raw -x. */
-function pointLandmarks(dir: 'right' | 'left' | 'up') {
+function pointLandmarks(dir: 'right' | 'left' | 'up', shiftX = 0, tilt = 0) {
   const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
   lm[0] = { x: 0.5, y: 0.62 }; // wrist
   lm[9] = { x: 0.5, y: 0.47 }; // middle MCP (palm size 0.15)
@@ -32,10 +34,10 @@ function pointLandmarks(dir: 'right' | 'left' | 'up') {
     lm[tip] = { x: 0.5, y: 0.55 }; // curled: tip back toward the wrist
   }
   const sx = dir === 'right' ? -1 : dir === 'left' ? 1 : 0;
-  const sy = dir === 'up' ? -1 : 0;
+  const sy = dir === 'up' ? -1 : tilt;
   lm[5] = { x: 0.5, y: 0.48 };
   for (const [i, k] of [[6, 0.05], [7, 0.09], [8, 0.13]] as const) lm[i] = { x: 0.5 + sx * k, y: 0.48 + sy * k };
-  return lm;
+  return lm.map((p) => ({ x: p.x + shiftX, y: p.y }));
 }
 
 function frame(pose: CannedGesture, score: number, mx: number, y: number, size: number): EngineFrame {
@@ -74,7 +76,7 @@ class Rig {
           s.hand === false
             ? { hand: null }
             : s.point
-              ? { hand: { landmarks: pointLandmarks(s.point), gesture: s.pose ?? 'None', score: s.score ?? 0.9 } }
+              ? { hand: { landmarks: pointLandmarks(s.point, 0.5 - this.mx, s.tilt), gesture: s.pose ?? 'None', score: s.score ?? 0.9 } }
               : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
         for (const a of this.engine.update(f, t)) this.actions.push({ a, t });
         this.frameIdx++;
@@ -291,6 +293,27 @@ describe('pointing (next / previous step)', () => {
   it('pointing up is not next/previous', () => {
     const r = armed().run({ point: 'up', ms: 3000 });
     expect(r.names()).toEqual(['ARM']);
+  });
+
+  it('a low-confidence point never fires (dim kitchen, blurred hand)', () => {
+    const r = armed().run({ point: 'right', ms: 3000, score: 0.5 });
+    expect(r.names()).toEqual(['ARM']);
+  });
+
+  it('a moving point (finger on a knife spine while chopping) never fires', () => {
+    const r = armed();
+    for (let i = 0; i < 10; i++) r.run({ point: 'right', ms: 300, x: 0.4, toX: 0.6 }, { point: 'right', ms: 300, x: 0.6, toX: 0.4 });
+    expect(r.of('NEXT_STEP')).toHaveLength(0);
+  });
+
+  it('a slight droop mid-hold does not break the hold (no second step)', () => {
+    const r = armed().run({ point: 'right', ms: 800 }, { point: 'right', tilt: 0.9, ms: 300 }, { point: 'right', ms: 3000 });
+    expect(r.of('NEXT_STEP')).toHaveLength(1);
+  });
+
+  it('a strongly tilted finger is not a sideways point', () => {
+    const r = armed().run({ point: 'right', tilt: 0.9, ms: 3000 });
+    expect(r.of('NEXT_STEP')).toHaveLength(0);
   });
 
   it('does nothing while unarmed', () => {

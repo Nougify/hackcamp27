@@ -89,6 +89,7 @@ export default function GestureController({
   const [hud, setHud] = useState<GestureHud | null>(null);
   const [flash, setFlash] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  const [debugPose, setDebugPose] = useState("");
   // Latest props for the long-lived action callback.
   const latest = useRef({ controller, announce, paused });
   useEffect(() => {
@@ -102,7 +103,10 @@ export default function GestureController({
     source.current = src;
     const offHud = src.onHud((h) => {
       setHud(h);
-      if (DEBUG) drawLandmarks(canvas.current, src.landmarks);
+      if (DEBUG) {
+        drawLandmarks(canvas.current, src.landmarks);
+        setDebugPose(src.debugPose);
+      }
     });
     const offAction = src.onAction((a) => {
       const { controller: c, announce: say, paused: isPaused } = latest.current;
@@ -185,7 +189,7 @@ export default function GestureController({
 
         {hud?.hint === "move_closer" && <p className="mt-1 text-warn">Move closer</p>}
         {hud?.hint === "more_light" && <p className="mt-1 text-warn">Turn on a light</p>}
-        {DEBUG && hud && <p className="mt-1 font-mono text-xs text-muted">{hud.fps} fps · {hud.pose}</p>}
+        {DEBUG && hud && <p className="mt-1 font-mono text-xs text-muted">{hud.fps} fps · {debugPose}</p>}
 
         {failed ? (
           hud?.error === "NotAllowedError" && (

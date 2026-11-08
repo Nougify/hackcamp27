@@ -1620,7 +1620,7 @@ Recognizer options:
 
 Rules:
 - **Release-to-rearm:** a discrete pose action fires at most once per continuous hold.
-- **Global cooldown:** 1200 ms after any discrete action (swipe, timer, speak). Scroll ticks don't trigger it, but a release after scrolling adds a 300 ms cooldown.
+- **Global cooldown:** 1200 ms after any discrete action (point, timer, speak). Scroll ticks don't trigger it, but a release after scrolling adds a 300 ms cooldown.
 - **Successful actions extend the armed window** by another 5 s from the action time.
 
 ### 11.3 Swipe detection (removed)
