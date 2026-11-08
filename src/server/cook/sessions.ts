@@ -194,12 +194,13 @@ export async function getFinishPreview(
   tz: string,
   sessionId: string,
   servingsCooked: number,
+  graceDays = 0,
 ): Promise<FinishPreview> {
   const bundle = await loadSessionBundle(userId, sessionId);
   if (!bundle) throw new NotFoundError('Cooking session not found');
   if (bundle.session.status !== 'in_progress') throw new ConflictError('Session is no longer in progress');
 
-  const pantry = await listPantryForMatching(userId, tz, new Date(), 200);
+  const pantry = await listPantryForMatching(userId, tz, new Date(), 200, graceDays);
   const pantryById = new Map(pantry.map((p) => [p.id, p]));
   const parsed = variantIngredients(bundle.variant).map((i) => i.parsed);
   const matches = matchIngredients(parsed, pantry);

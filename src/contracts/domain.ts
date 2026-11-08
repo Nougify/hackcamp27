@@ -34,6 +34,9 @@ export interface UserProfile {
   diets: DietFlag[];
   allergens: Allergen[];
   onboarded: boolean;
+  /** 0–14. Items up to this many days past their best-before date still count as usable
+   *  (Expiring soon, pantry colouring, recipe matching). Absent = 0. */
+  pastBestBeforeGraceDays?: number;
 }
 
 export interface Product {

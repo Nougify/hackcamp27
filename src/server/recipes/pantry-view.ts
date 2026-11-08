@@ -102,21 +102,27 @@ export async function listPantryForMatching(
   tz: string,
   now = new Date(),
   limit = 25,
+  graceDays = 0,
 ): Promise<PantryItem[]> {
   const rows = await sql<PantryRow[]>`
     SELECT * FROM pantry_items
     WHERE user_id = ${userId} AND quantity_base > 0
     ORDER BY expiry_date NULLS LAST, normalized_name
   `;
-  return pantryForMatching(rows, tz, now, limit);
+  return pantryForMatching(rows, tz, now, limit, graceDays);
 }
 
-/** Matching view of pantry rows: in stock, not expired, soonest expiry first (FEFO). Shared with finish. */
-export function pantryForMatching(rows: PantryRow[], tz: string, now = new Date(), limit = 25): PantryItem[] {
+/**
+ * Matching view of pantry rows: in stock, not expired beyond the user's
+ * pastBestBeforeGraceDays (contracts/domain.ts; also drives "expiring soon"
+ * and pantry colouring in src/features/pantry/expiry.ts), soonest expiry
+ * first (FEFO). Shared with finish.
+ */
+export function pantryForMatching(rows: PantryRow[], tz: string, now = new Date(), limit = 25, graceDays = 0): PantryItem[] {
   return rows
     .filter((row) => Number(row.quantity_base) > 0)
     .map((row) => rowToPantryItem(row, tz, now))
-    .filter((item) => item.daysToExpiry == null || item.daysToExpiry >= 0)
+    .filter((item) => item.daysToExpiry == null || item.daysToExpiry >= -graceDays)
     .sort((a, b) => (a.daysToExpiry ?? 9999) - (b.daysToExpiry ?? 9999))
     .slice(0, limit);
 }
@@ -135,10 +141,17 @@ export async function listPantryByIds(userId: string, ids: string[], tz: string)
   return rows.map((row) => rowToPantryItem(row, tz));
 }
 
-export async function getProfileFilters(userId: string): Promise<{ diets: string[]; allergens: string[]; tz: string }> {
-  const rows = await sql<{ diets: string[]; allergens: string[]; tz: string }[]>`
-    SELECT diets, allergens, tz FROM users WHERE id = ${userId} LIMIT 1
+export async function getProfileFilters(
+  userId: string,
+): Promise<{ diets: string[]; allergens: string[]; tz: string; pastBestBeforeGraceDays: number }> {
+  const rows = await sql<{ diets: string[]; allergens: string[]; tz: string; past_best_before_grace_days: number }[]>`
+    SELECT diets, allergens, tz, past_best_before_grace_days FROM users WHERE id = ${userId} LIMIT 1
   `;
   const row = rows[0];
-  return { diets: row?.diets ?? [], allergens: row?.allergens ?? [], tz: row?.tz ?? 'America/Vancouver' };
+  return {
+    diets: row?.diets ?? [],
+    allergens: row?.allergens ?? [],
+    tz: row?.tz ?? 'America/Vancouver',
+    pastBestBeforeGraceDays: row?.past_best_before_grace_days ?? 0,
+  };
 }

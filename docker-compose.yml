@@ -7,6 +7,7 @@ services:
     volumes: ["./gcp-sa.json:/run/secrets/gcp-sa.json:ro"]
     restart: unless-stopped
     expose: ["3000"]
+    deploy: { replicas: 4 }
   caddy:
     image: caddy:2
     ports: ["80:80", "443:443", "443:443/udp"]
