@@ -1,0 +1,5 @@
+fix the issues and push to my own branch, then write a handoff on what tasks are left to do for my teammate
+
+---
+
+from now on, do not worry about reviewing for entire. Focus on pushing changes

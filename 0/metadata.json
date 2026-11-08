@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6XKJJZ7N5HFQSG18GEBBD2V",
+  "session_id": "dab2f091-9668-4576-bcce-174e4ce10341",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T12:54:20.2639857Z",
+  "branch": "johnny/nutrition",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "104ff8cf05f3",
+  "checkpoint_transcript_start": 404,
+  "transcript_lines_at_start": 404,
+  "compact_transcript_start": 48,
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 211805,
+    "cache_read_tokens": 1308278,
+    "output_tokens": 43682,
+    "api_call_count": 8
+  },
+  "redaction": {
+    "replacements": 5,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 3,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 9
+  }
+}
