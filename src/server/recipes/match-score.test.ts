@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pantryFixture } from '@/contracts/fixtures';
 import type { PantryItem, RecipeIngredient } from '@/contracts/domain';
-import { matchIngredients } from './match';
+import { matchIngredients, matchWithBaseNames } from './match';
 import { computeScores } from './score';
 
 function ing(partial: Partial<RecipeIngredient> & { raw: string }): RecipeIngredient {
@@ -97,6 +97,24 @@ describe('matchIngredients', () => {
       [noBridge],
     );
     expect(m?.status).toBe('have');
+  });
+});
+
+describe('matchWithBaseNames', () => {
+  const jam: PantryItem = { ...pantryFixture[0]!, id: 'jam-1', name: 'Strawberry Jam', normalizedName: 'strawberry jam', daysToExpiry: null };
+  const anyJam = ing({ raw: '3/4 cup any flavor jam', name: 'any flavor jam', normalizedName: 'any flavor jam' });
+  const bases = new Map([['any flavor jam', 'jam'], ['Strawberry Jam', 'jam']]);
+
+  it('matches a missing ingredient to a pantry item by base name', async () => {
+    const [m] = await matchWithBaseNames([anyJam], [jam], async () => bases);
+    expect(m).toMatchObject({ ingredientIndex: 0, status: 'have', pantryItemId: 'jam-1', pantryItemName: 'Strawberry Jam' });
+  });
+
+  it('keeps first-pass matches when base names fail', async () => {
+    const [m] = await matchWithBaseNames([anyJam], [jam], async () => {
+      throw new Error('down');
+    });
+    expect(m?.status).toBe('missing');
   });
 });
 

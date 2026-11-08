@@ -104,3 +104,46 @@ export function matchIngredients(ingredients: RecipeIngredient[], pantry: Pantry
     };
   });
 }
+
+/** Maps names to generic base ingredient names; names it can't resolve are left out. */
+export type BaseNameFn = (names: string[]) => Promise<Map<string, string>>;
+
+const lookupName = (ing: RecipeIngredient) => (ing.name || ing.normalizedName || ing.raw).trim();
+
+/**
+ * matchIngredients, then a second pass for 'missing' rows that compares generic
+ * base names on both sides ("any flavor jam" and "Strawberry Jam" both → "jam").
+ * Best-effort: if base names fail, the first-pass matches stand.
+ */
+export async function matchWithBaseNames(
+  ingredients: RecipeIngredient[],
+  pantry: PantryItem[],
+  baseNames: BaseNameFn,
+): Promise<PantryMatch[]> {
+  const matches = matchIngredients(ingredients, pantry);
+  const missing = matches.filter((m) => m.status === 'missing' && lookupName(ingredients[m.ingredientIndex]!));
+  const usable = usablePantry(pantry);
+  if (missing.length === 0 || usable.length === 0) return matches;
+
+  let base: Map<string, string>;
+  try {
+    base = await baseNames([
+      ...new Set([...missing.map((m) => lookupName(ingredients[m.ingredientIndex]!)), ...usable.map((p) => p.name)]),
+    ]);
+  } catch {
+    return matches;
+  }
+  const basePantry = usable.flatMap((p) => {
+    const b = base.get(p.name);
+    return b ? [{ ...p, normalizedName: b }] : [];
+  });
+
+  return matches.map((m) => {
+    if (m.status !== 'missing') return m;
+    const ing = ingredients[m.ingredientIndex]!;
+    const b = base.get(lookupName(ing));
+    if (!b) return m;
+    const [second] = matchIngredients([{ ...ing, normalizedName: b }], basePantry);
+    return second && second.status !== 'missing' ? { ...second, ingredientIndex: m.ingredientIndex } : m;
+  });
+}

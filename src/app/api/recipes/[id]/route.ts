@@ -2,7 +2,7 @@ import { requireUser } from '@/lib/current-user';
 import { handleRouteError, isUuid, jsonError, jsonOk } from '@/lib/http';
 import { checkDiet } from '@/server/diet/check';
 import { estimateRecipeNutrition } from '@/server/nutrition/recipe';
-import { matchIngredients } from '@/server/recipes/match';
+import { matchIngredientsSmart } from '@/server/recipes/base-names';
 import { computeScores } from '@/server/recipes/score';
 import { getRecipeDetail } from '@/server/recipes/store';
 import { getProfileFilters, listPantryForMatching } from '@/server/recipes/pantry-view';
@@ -26,7 +26,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
     const { original } = detail;
-    const matches = matchIngredients(original.ingredients, pantry);
+    const matches = await matchIngredientsSmart(original.ingredients, pantry);
     const dietCheck = checkDiet(
       original.ingredients.map((ing) => ({ raw: ing.raw, normalizedName: ing.normalizedName })),
       { diets, allergens },
@@ -45,7 +45,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const adaptationNutrition: Record<string, NutritionEstimate> = {};
     for (const adaptation of detail.adaptations) {
       const parsed = adaptation.ingredients.map((i) => i.parsed);
-      const m = matchIngredients(parsed, pantry);
+      const m = await matchIngredientsSmart(parsed, pantry);
       adaptationNutrition[adaptation.variantId] = estimateRecipeNutrition({
         ingredients: parsed,
         matches: m,
