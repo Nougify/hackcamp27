@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ndjsonResponse } from './http';
+import { ApiError as GenAIError } from '@google/genai';
+import { handleRouteError, ndjsonResponse } from './http';
 
 describe('ndjsonResponse', () => {
   it('streams one JSON object per line', async () => {
@@ -26,5 +27,15 @@ describe('ndjsonResponse', () => {
     release();
     await new Promise((r) => setTimeout(r, 10));
     expect(seenAbort).toBe(true);
+  });
+
+  it('reports a Gemini 429 as RATE_LIMITED', async () => {
+    const quota = new GenAIError({ message: 'quota', status: 429 });
+    const res = ndjsonResponse<unknown>(async () => {
+      throw quota;
+    });
+    expect(JSON.parse(await res.text()).error.code).toBe('RATE_LIMITED');
+    expect(handleRouteError(quota).status).toBe(429);
+    expect(handleRouteError(Object.assign(new Error('x'), { status: 429 })).status).toBe(500);
   });
 });

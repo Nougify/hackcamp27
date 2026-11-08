@@ -12,7 +12,8 @@ const schema = z.object({
   DB_POOL_MAX: z.coerce.number().int().positive().default(5),
   DATABASE_URL_TEST: z.string().optional(),
 
-  GEMINI_API_KEY: z.string().min(1),
+  GOOGLE_CLOUD_PROJECT: z.string().min(1),
+  GOOGLE_CLOUD_LOCATION: z.string().min(1).catch('us-central1'), // blank line in .env also falls back
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   GEMINI_SEARCH_MODEL: z.string().default('gemini-3.8-flash'),
 

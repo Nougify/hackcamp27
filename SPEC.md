@@ -1039,7 +1039,9 @@ export type ManualMealRequest =
 | `DATABASE_URL` | server | yes | from `tiger db connection-string` | Typically `postgres://tsdbadmin:…@host:port/tsdb?sslmode=require` **[VERIFY format]** |
 | `DB_POOL_MAX` | server | no | `5` | postgres.js `max` |
 | `DATABASE_URL_TEST` | server (tests) | no | connection string of a `tiger service fork` | `npm run test:db` only; never production |
-| `GEMINI_API_KEY` | server | yes | | Gemini API |
+| `GOOGLE_CLOUD_PROJECT` | server | yes | | Vertex AI project (auth via ADC) |
+| `GOOGLE_CLOUD_LOCATION` | server | no | `us-central1` | Vertex AI region |
+| `GOOGLE_APPLICATION_CREDENTIALS` | server | prod | | Service-account key path for ADC; set by docker-compose |
 | `GEMINI_MODEL` | server | no | `gemini-3.8-flash` | Vision, adaptation, normalization |
 | `GEMINI_SEARCH_MODEL` | server | no | `gemini-3.8-flash` | Grounded discovery. Try `gemini-3.5-flash-lite` for latency **[VERIFY grounding support]** |
 | `DATAANDAPIS_KEY` | server | yes | | `X-Api-Key` for barcode lookup |
@@ -1882,8 +1884,8 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 | # | Item | Why it matters | How to verify |
 |---|---|---|---|
 | 1 | Exact `@google/genai` API for (a) grounded search with `googleSearch` and `groundingMetadata`, (b) JSON schema output with images (`interactions.create` vs `models.generateContent`) | The research saw both shapes. The wrapper must work | Read the current SDK README. Run one grounded call and one label-photo call |
-| 2 | Gemini **Grounding terms**: must Search Suggestions be displayed, and may grounded results and URLs be cached (24 h search cache, 7-day recipe cache)? | The research could not read the terms page | Read the "Grounding with Google Search" section of the Gemini API Additional Terms. Adjust `recipe_search_cache` TTL or drop it |
-| 3 | `gemini-3.8-flash` latency (reported 13.3 s TTFT) vs `gemini-3.5-flash-lite` for discovery. Does Flash-Lite support grounding? | Search UX and the 5k free grounded queries | Time 3 runs of each. Keep `GEMINI_SEARCH_MODEL` configurable |
+| 2 | Gemini **Grounding terms**: must Search Suggestions be displayed, and may grounded results and URLs be cached (24 h search cache, 7-day recipe cache)? | The research could not read the terms page | Read the "Grounding with Google Search" section of the Vertex AI service terms (we call Gemini through Vertex AI). Adjust `recipe_search_cache` TTL or drop it |
+| 3 | `gemini-3.8-flash` latency (reported 13.3 s TTFT) vs `gemini-3.5-flash-lite` for discovery. Does Flash-Lite support grounding? | Search UX and Vertex AI grounding cost | Time 3 runs of each. Keep `GEMINI_SEARCH_MODEL` configurable |
 | 4 | dataandapis not-found shape. Whether misses cost tokens. Units of `sodium` and the carb convention. The team key's plan and quota | Cache policy and correctness | Call with `0000000000000` and with a known product. Check the dashboard token count |
 | 5 | OFF v2 field names (`proteins_100g`, `fat_100g`, `_serving`) and not-found shape | Adapter correctness | One staging call (`world.openfoodfacts.net`, basic auth off/off). Save as a fixture |
 | 6 | Tiger free service: TimescaleDB present. `WITH (tsdb.hypertable…)` accepts the composite PK. tz-aware `time_bucket` in the cagg. Real-time aggregation. Connection string format. Storage cap (750 MB is third-party) | Migrations | Run the migrations on a fork. `SELECT extname, extversion FROM pg_extension;` |

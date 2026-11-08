@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 // Gemini smoke test (§18.2 task 0.7, §17 item 1): one grounded-search call and
-// one vision JSON call. Needs GEMINI_API_KEY in the environment.
-// Usage: GEMINI_API_KEY=... node scripts/gemini-smoke.mjs
+// one vision JSON call. Uses Vertex AI with Application Default Credentials.
+// Usage: gcloud auth application-default login && GOOGLE_CLOUD_PROJECT=... node scripts/gemini-smoke.mjs
 import { GoogleGenAI } from '@google/genai';
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  console.error('GEMINI_API_KEY is required');
+const project = process.env.GOOGLE_CLOUD_PROJECT;
+if (!project) {
+  console.error('GOOGLE_CLOUD_PROJECT is required');
   process.exit(1);
 }
+const location = process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1';
 const model = process.env.GEMINI_MODEL ?? 'gemini-3.8-flash';
 const searchModel = process.env.GEMINI_SEARCH_MODEL ?? 'gemini-3.8-flash';
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ vertexai: true, project, location });
 
 console.log(`[smoke] models: json=${model} search=${searchModel}`);
 
