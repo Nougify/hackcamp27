@@ -3,9 +3,34 @@
   "checkpoint_id": "01M6WHM8EE6840T6454X98C8NX",
   "strategy": "manual-commit",
   "branch": "jerry/scaffold",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
-    "logs/mcp-puppeteer-2026-11-07.log"
+    "logs/mcp-puppeteer-2026-11-07.log",
+    "src/app/(app)/cook/[sessionId]/page.tsx",
+    "src/app/(app)/layout.tsx",
+    "src/app/(app)/nav.tsx",
+    "src/app/(app)/onboarding/page.tsx",
+    "src/app/(app)/pantry/page.tsx",
+    "src/app/(app)/recipes/page.tsx",
+    "src/app/(app)/settings/page.tsx",
+    "src/app/(app)/today/page.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/dialog.tsx",
+    "src/components/ui/index.ts",
+    "src/components/ui/toast.tsx",
+    "src/contracts/fixtures/cook.ts",
+    "src/contracts/fixtures/index.ts",
+    "src/contracts/fixtures/meals.ts",
+    "src/contracts/fixtures/pantry.ts",
+    "src/contracts/fixtures/product.ts",
+    "src/contracts/fixtures/recipes.ts",
+    "src/features/gesture/index.ts",
+    "src/features/gesture/keyboard-source.ts",
+    "src/features/voice/browser-voice.ts",
+    "src/features/voice/index.ts",
+    "src/lib/current-user.ts",
+    "vitest.config.ts"
   ],
   "sessions": [
     {
@@ -14,23 +39,37 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 30,
-    "cache_creation_tokens": 7895,
-    "cache_read_tokens": 1367410,
-    "output_tokens": 4315,
-    "api_call_count": 12
+    "input_tokens": 124,
+    "cache_creation_tokens": 154143,
+    "cache_read_tokens": 7771509,
+    "output_tokens": 38212,
+    "api_call_count": 59,
+    "subagent_tokens": {
+      "input_tokens": 12,
+      "cache_creation_tokens": 63348,
+      "cache_read_tokens": 204244,
+      "output_tokens": 27695,
+      "api_call_count": 6
+    }
   },
   "redaction": {
-    "replacements": 4,
+    "replacements": 8,
     "layers": {
-      "betterleaks": 0,
+      "betterleaks": 2,
       "connection_string": 0,
       "credential_key": 0,
       "credential_value": 0,
-      "credentialed_uri": 0,
+      "credentialed_uri": 2,
       "entropy": 4,
       "key_context": 0,
       "provider_token": 0,

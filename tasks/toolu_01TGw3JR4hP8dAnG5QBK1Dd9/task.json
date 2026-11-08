@@ -1,0 +1,42 @@
+{
+  "tool_use_id": "toolu_01TGw3JR4hP8dAnG5QBK1Dd9",
+  "agent_id": "ae1a0b8e08bc107a1",
+  "subagent_type": "typescript-pro",
+  "task_description": "Write contract fixtures",
+  "files": [
+    "src/app/(app)/cook/[sessionId]/page.tsx",
+    "src/app/(app)/layout.tsx",
+    "src/app/(app)/nav.tsx",
+    "src/app/(app)/onboarding/page.tsx",
+    "src/app/(app)/pantry/page.tsx",
+    "src/app/(app)/recipes/page.tsx",
+    "src/app/(app)/settings/page.tsx",
+    "src/app/(app)/today/page.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/dialog.tsx",
+    "src/components/ui/index.ts",
+    "src/components/ui/toast.tsx",
+    "src/contracts/fixtures/cook.ts",
+    "src/contracts/fixtures/index.ts",
+    "src/contracts/fixtures/meals.ts",
+    "src/contracts/fixtures/pantry.ts",
+    "src/contracts/fixtures/product.ts",
+    "src/contracts/fixtures/recipes.ts",
+    "src/features/gesture/index.ts",
+    "src/features/gesture/keyboard-source.ts",
+    "src/features/voice/browser-voice.ts",
+    "src/features/voice/index.ts",
+    "src/lib/current-user.ts",
+    "vitest.config.ts"
+  ],
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 63348,
+    "cache_read_tokens": 204244,
+    "output_tokens": 27695,
+    "api_call_count": 6
+  },
+  "started_at": "2026-11-07T19:57:27.4363149-07:00",
+  "completed_at": "2026-11-07T20:00:07.7160909-07:00"
+}

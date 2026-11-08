@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6WHM8EE6840T6454X98C8NX",
+  "session_id": "64448cf6-dac7-4c66-a32c-409ab82cc3cc",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T03:01:02.4587784Z",
+  "branch": "jerry/scaffold",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/app/(app)/cook/[sessionId]/page.tsx",
+    "src/app/(app)/layout.tsx",
+    "src/app/(app)/nav.tsx",
+    "src/app/(app)/onboarding/page.tsx",
+    "src/app/(app)/pantry/page.tsx",
+    "src/app/(app)/recipes/page.tsx",
+    "src/app/(app)/settings/page.tsx",
+    "src/app/(app)/today/page.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/dialog.tsx",
+    "src/components/ui/index.ts",
+    "src/components/ui/toast.tsx",
+    "src/contracts/fixtures/cook.ts",
+    "src/contracts/fixtures/index.ts",
+    "src/contracts/fixtures/meals.ts",
+    "src/contracts/fixtures/pantry.ts",
+    "src/contracts/fixtures/product.ts",
+    "src/contracts/fixtures/recipes.ts",
+    "src/features/gesture/index.ts",
+    "src/features/gesture/keyboard-source.ts",
+    "src/features/voice/browser-voice.ts",
+    "src/features/voice/index.ts",
+    "src/lib/current-user.ts",
+    "vitest.config.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "943bc220ab98",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 94,
+    "cache_creation_tokens": 146248,
+    "cache_read_tokens": 6404099,
+    "output_tokens": 33897,
+    "api_call_count": 47,
+    "subagent_tokens": {
+      "input_tokens": 12,
+      "cache_creation_tokens": 63348,
+      "cache_read_tokens": 204244,
+      "output_tokens": 27695,
+      "api_call_count": 6
+    }
+  },
+  "redaction": {
+    "replacements": 4,
+    "layers": {
+      "betterleaks": 2,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 2,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
