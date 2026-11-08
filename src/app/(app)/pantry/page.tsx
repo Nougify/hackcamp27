@@ -11,7 +11,6 @@ export default async function PantryPage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
       <h1 className="font-display text-3xl font-semibold">Pantry</h1>
-      <p className="mt-1 text-sm text-muted">Soonest best-before first.</p>
       <div className="mt-6">
         <PantryList
           initialItems={items}

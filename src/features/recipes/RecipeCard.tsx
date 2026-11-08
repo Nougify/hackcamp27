@@ -1,7 +1,12 @@
 import Link from 'next/link';
 import type { RecipeCandidate } from '@/contracts/domain';
-import { Card } from '@/components/ui';
+import { Badge, Card } from '@/components/ui';
 import { daysLabel } from './MatchMarker';
+
+/** Every ingredient is on hand or a staple. */
+export function canMake(candidate: RecipeCandidate): boolean {
+  return candidate.matches.every((m) => m.status === 'have' || m.status === 'staple');
+}
 
 export function RecipeCard({ candidate }: { candidate: RecipeCandidate }) {
   const have = candidate.matches.filter((m) => m.status === 'have' || m.status === 'staple').length;
@@ -9,8 +14,15 @@ export function RecipeCard({ candidate }: { candidate: RecipeCandidate }) {
   const kcal = candidate.nutrition.perServing.energyKcal;
   const protein = candidate.nutrition.perServing.proteinG;
 
+  const ready = canMake(candidate);
+
   return (
-    <Card>
+    <Card className={ready ? 'ring-2 ring-accent' : ''}>
+      {ready && (
+        <Badge tone="accent" className="mb-2">
+          ✓ You have everything
+        </Badge>
+      )}
       <div className="text-xs text-muted">
         From <strong className="text-ink">{candidate.source.siteName}</strong>
         {candidate.source.author ? ` by ${candidate.source.author}` : ''}

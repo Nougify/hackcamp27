@@ -10,7 +10,6 @@ export default async function StatusPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="font-display text-3xl font-semibold">Status</h1>
-      <p className="mt-2 text-muted">Live checks against the database and every third-party service.</p>
       <StatusClient initial={initial} />
     </main>
   );
