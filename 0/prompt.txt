@@ -1,0 +1,65 @@
+<pasted_content id="5694">
+Create Your First Agent
+After every push, Entire Agents will review the code changes and evaluate confidence levels through different customizable monitors, such as Confidence, Risk, Security, and Drift. Navigate to your project on entire.com:
+
+    Open your project and go to Agents.
+    You can start from a list of preset agents and click Enable as is: Or, click New agent and customize the agent to your own needs:
+    Under Agent, give it a name and description. Pick the harness, model, reasoning effort and timeout, and write its Instructions (what it should review). Then set the signal it reports: a value type and a polarity.
+    Under Trigger, choose when it runs, for example Trail branch pushed, Run manually or Recurring schedule.
+    Under Repositories, select at least one repository.
+    Leave the toggle on Active and click Create agent.
+
+Each of these agents produces an evaluation score and can flag what needs fixing as Findings.
+</pasted_content id="5694">
+
+---
+
+it doesn't give me an option to select tho it's just an empty list on /agents
+
+---
+
+also i log in but it won't let me access the api why is that
+
+---
+
+can i use my claude plan instead of entire for code review
+
+---
+
+ok but now i just wanna confirm, now that i've set up the entire repo, can my teammates and i's claude accounts all work together through there?
+
+---
+
+ok so make a step by step on how to set it up on my friends' laptops (they don't have it yet) so we can start working
+
+---
+
+no github identity for handle "H6NG" what's going on
+
+---
+
+my friend already cloned the repo through git what should i do for step 3
+
+---
+
+and then once i set it up how do i get all 3 accounts to work together in parallel
+
+---
+
+how do i make it so that reviews happen through our claude accounts (we have not set up the billing on entire)
+
+---
+
+can you write this to whichever md controls claude workflows so all agents do it automatically
+
+---
+
+start a pr, merge jerry into main
+
+---
+
+wait so summarize in simple terms what entire can do for us between our 3 accounts
+
+---
+
+can it auto merge
