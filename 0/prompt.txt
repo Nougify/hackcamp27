@@ -1,0 +1,10 @@
+<pasted_content id="40fa">
+You need to do that: 
+
+So the OAuth round-trip always actually completes on now.were.cooking. That means:
+APP_BASE_URL=https://now.were.cooking/ — this is what @auth0/nextjs-auth0 uses to build the redirect_uri it sends to Auth0.
+Auth0 dashboard Allowed Callback URLs must include https://now.were.cooking/auth/callback to match.
+were.cooking only needs to appear in Allowed Logout URLs (since logout can send you back to the marketing page) and doesn't need to be in Web Origins, since it never makes a direct auth request — it just issues an HTTP redirect at the edge.
+</pasted_content id="40fa">
+
+ ok we registered a domain name help me fill out the new urls for auth0
