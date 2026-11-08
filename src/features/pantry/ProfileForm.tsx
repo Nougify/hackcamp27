@@ -49,7 +49,7 @@ function Chips<T extends string>({
           return (
             <label
               key={o}
-              className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm ${
+              className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm ${
                 on ? 'border-accent bg-accent-soft text-accent' : 'border-line'
               }`}
             >

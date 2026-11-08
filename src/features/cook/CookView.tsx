@@ -54,7 +54,7 @@ export function CookView({ sessionId }: { sessionId: string }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="theme-cook flex min-h-dvh flex-1 flex-col items-start justify-center px-6 py-10">{children}</main>;
+  return <main className="theme-cook flex min-h-dvh flex-1 flex-col items-start justify-center px-8 py-10 sm:px-12 lg:px-16">{children}</main>;
 }
 
 function Cooking({ view }: { view: CookSessionView }) {
@@ -330,7 +330,7 @@ function Cooking({ view }: { view: CookSessionView }) {
           <Button variant={handsFree ? "primary" : "secondary"} aria-pressed={handsFree} onClick={() => setHandsFree((v) => !v)}>
             Hands-free
           </Button>
-          <Button variant="ghost" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
+          <Button variant="ghost" className="text-xl" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
           <Button variant="ghost" onClick={() => setFinishOpen(true)}>Finish</Button>
           <Button variant="ghost" onClick={exit}>Exit</Button>
         </div>

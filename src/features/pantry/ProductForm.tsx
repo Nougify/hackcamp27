@@ -58,6 +58,16 @@ function parseNum(s: string): number | null {
 
 const inputClass = (flagged = false) =>
   `min-h-11 w-full rounded-xl border bg-surface px-3 text-ink ${flagged ? 'border-warn ring-2 ring-warn/40' : 'border-line'}`;
+/** Same field styling as inputClass, but with room on the right for a manually drawn select arrow. */
+const selectClass = (flagged = false) => inputClass(flagged).replace('px-3', 'appearance-none pl-3 pr-9');
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const chevronStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
 
 export function ProductForm({
   initial,
@@ -166,7 +176,9 @@ export function ProductForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-semibold">
-          Name <span className="sr-only">(required)</span>
+          <span>
+            Name <span className="sr-only">(required)</span>
+          </span>
           <input
             className={inputClass(flagged.has('name'))}
             value={name}
@@ -177,7 +189,9 @@ export function ProductForm({
           />
         </label>
         <label className="grid gap-1 text-sm font-semibold">
-          Brand <span className="font-normal text-muted">(optional)</span>
+          <span>
+            Brand <span className="font-normal text-muted">(optional)</span>
+          </span>
           <input className={inputClass()} value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={120} autoComplete="off" />
         </label>
       </div>
@@ -195,7 +209,8 @@ export function ProductForm({
           />
           <select
             aria-label="Unit"
-            className={`${inputClass()} max-w-36`}
+            className={`${selectClass()} max-w-36`}
+            style={chevronStyle}
             value={unit}
             onChange={(e) => {
               const u = e.target.value as DisplayUnit;
@@ -257,7 +272,7 @@ export function ProductForm({
         </legend>
         <label className="grid max-w-xs gap-1 text-sm">
           Values are
-          <select className={inputClass()} value={basis} onChange={(e) => setBasis(e.target.value as NutritionBasis)}>
+          <select className={selectClass()} style={chevronStyle} value={basis} onChange={(e) => setBasis(e.target.value as NutritionBasis)}>
             <option value="100g">per 100 g</option>
             <option value="100ml">per 100 ml</option>
             <option value="unit">per piece</option>

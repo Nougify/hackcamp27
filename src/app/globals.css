@@ -18,6 +18,8 @@
   --danger-soft: #fce7ee;
   --ai: #5b4bb7;
   --ai-soft: #ece9fb;
+  --success: #1f7a37;
+  --success-soft: #e1f3e5;
 }
 
 .theme-cook {
@@ -36,6 +38,8 @@
   --danger-soft: #3d1c28;
   --ai: #b3a8ff;
   --ai-soft: #2a2546;
+  --success: #6cc08b;
+  --success-soft: #1f3a28;
   background: var(--bg);
   color: var(--ink);
 }
@@ -56,6 +60,8 @@
   --color-danger-soft: var(--danger-soft);
   --color-ai: var(--ai);
   --color-ai-soft: var(--ai-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-manrope);
 }

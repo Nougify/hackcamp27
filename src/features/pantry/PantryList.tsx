@@ -16,6 +16,15 @@ import { ProductForm, type ProductFormValues } from './ProductForm';
 
 type Sort = 'expiry' | 'name';
 
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const chevronStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
+
 const withoutFloatNoise = (n: number | null) => (n === null ? null : Number(n.toFixed(6)));
 
 export function PantryList({ initialItems, graceDays, addSlot }: { initialItems: PantryItem[]; graceDays: number; addSlot?: React.ReactNode }) {
@@ -94,7 +103,8 @@ export function PantryList({ initialItems, graceDays, addSlot }: { initialItems:
         <label className="ml-auto flex min-h-11 items-center gap-2 text-sm">
           Sort
           <select
-            className="min-h-11 rounded-xl border border-line bg-surface px-3"
+            className="min-h-11 appearance-none rounded-xl border border-line bg-surface py-2 pl-3 pr-9"
+            style={chevronStyle}
             value={sort}
             onChange={(e) => {
               const s = e.target.value as Sort;
