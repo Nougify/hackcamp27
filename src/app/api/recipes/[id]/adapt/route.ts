@@ -3,7 +3,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { ConflictError, RateLimitedError } from '@/lib/errors';
 import { handleRouteError, isUuid, jsonError, jsonOk } from '@/lib/http';
 import { estimateRecipeNutrition } from '@/server/nutrition/recipe';
-import { matchIngredients } from '@/server/recipes/match';
+import { matchIngredientsSmart } from '@/server/recipes/base-names';
 import { findMatchingAdaptation, getRecipeDetail, insertAdaptation } from '@/server/recipes/store';
 import { adaptationStillAllowed, requestAdaptation } from '@/server/recipes/adapt';
 import { getProfileFilters, listPantryForMatching } from '@/server/recipes/pantry-view';
@@ -27,7 +27,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const pantry = await listPantryForMatching(user.id, profile.tz, new Date(), 200, profile.pastBestBeforeGraceDays);
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
-    const matches = matchIngredients(detail.original.ingredients, pantry);
+    const matches = await matchIngredientsSmart(detail.original.ingredients, pantry);
     const missing = matches.filter((m) => m.status === 'missing' || m.status === 'insufficient');
     if (missing.length === 0) throw new ConflictError('Nothing to adapt — you have every ingredient.');
 
@@ -39,7 +39,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       const parsed = cached.ingredients.map((i) => i.parsed);
       const nutrition = estimateRecipeNutrition({
         ingredients: parsed,
-        matches: matchIngredients(parsed, pantry),
+        matches: await matchIngredientsSmart(parsed, pantry),
         pantryById,
         servings: detail.original.servings,
       });
@@ -54,7 +54,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const parsed = built.ingredients.map((i) => i.parsed);
     const nutrition = estimateRecipeNutrition({
       ingredients: parsed,
-      matches: matchIngredients(parsed, pantry),
+      matches: await matchIngredientsSmart(parsed, pantry),
       pantryById,
       servings: detail.original.servings,
     });
