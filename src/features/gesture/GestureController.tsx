@@ -34,8 +34,9 @@ const ERRORS: Record<NonNullable<GestureHud["error"]>, string> = {
   InsecureContext: "Hands-free needs HTTPS. Use the buttons or keyboard.",
   ModelLoadFailed: "Hands-free couldn't load. Use the buttons or keyboard.",
 };
+const ARM_LEGEND = "Hold palm: start";
 const LEGEND = [
-  ["✋", "Hold palm: start"],
+  ["✋", ARM_LEGEND],
   ["☝️", "Point up: next"],
   ["🤟", "Rock-on sign: back"],
   ["👍", "Thumb up/down: scroll"],
@@ -196,7 +197,7 @@ export default function GestureController({
           )
         ) : (
           <ul className="mt-2 grid gap-0.5 text-xs text-muted">
-            {LEGEND.filter(([icon]) => !(config.alwaysArmed && icon === "✋")).map(([icon, text]) => (
+            {LEGEND.filter(([, text]) => !(config.alwaysArmed && text === ARM_LEGEND)).map(([icon, text]) => (
               <li key={text}>
                 <span aria-hidden>{icon}</span> {text}
               </li>

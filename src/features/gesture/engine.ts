@@ -7,6 +7,8 @@ export type EngineFrame = {
     gesture: CannedGesture;
     score: number;
   };
+  /** Camera frame width / height; landmarks are normalized per axis. Default 4/3. */
+  aspect?: number;
 };
 
 type Snapshot = Omit<GestureHud, 'fps' | 'error'>;
@@ -28,7 +30,7 @@ const SCROLL_RELEASE_COOLDOWN_MS = 300;
 const POSE_SETTLE_MS = 150;
 // Next/previous poses must be held still: an index finger on a knife spine while chopping moves, and restarts the hold.
 const STILL: Partial<Record<CannedGesture, true>> = { Pointing_Up: true, ILoveYou: true };
-const STILL_MAX_DRIFT = 0.05; // index-tip movement (fraction of frame) allowed during the hold
+const STILL_MAX_DRIFT = 0.05; // index-tip movement allowed during the hold (fraction of frame height; x scaled by aspect)
 
 export class GestureEngine {
   private cfg: GestureConfig;
@@ -128,6 +130,7 @@ export class GestureEngine {
       this.nextScroll = null;
       this.needRelease = false;
       this.fired = false;
+      this.anchor = null; // e.g. Pointing_Up → ILoveYou: don't measure drift from the old hold
       this.pose = this.cand;
       this.poseSince = this.candSince; // hold timing counts from when the pose first appeared
     }
@@ -138,7 +141,7 @@ export class GestureEngine {
     if (STILL[pose] && steady) {
       const tip = h.landmarks[8];
       if (!this.anchor) this.anchor = tip;
-      else if (!this.fired && Math.hypot(tip.x - this.anchor.x, tip.y - this.anchor.y) > STILL_MAX_DRIFT) {
+      else if (!this.fired && Math.hypot((tip.x - this.anchor.x) * (frame.aspect ?? 4 / 3), tip.y - this.anchor.y) > STILL_MAX_DRIFT) {
         this.anchor = tip;
         this.poseSince = now; // moved: start the hold again
       }

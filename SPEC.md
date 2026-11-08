@@ -1587,7 +1587,7 @@ No published thresholds exist for kitchen gesture control. Every number below is
 
 | User control (confirmed) | Gesture | Fires | Why |
 |---|---|---|---|
-| *(prerequisite)* Arm | `Open_Palm` held ≥ **600 ms** | `ARM`, armed for **5 s**. The window extends after each action | Stirring, chopping and reaching never fire commands |
+| *(opt-in)* Arm | `Open_Palm` held ≥ **600 ms**. Only when "Always armed" is **off**; it is **on by default** (Jerry, 2026-11-07) | `ARM`, armed for **5 s**. The window extends after each action | When enabled, stirring, chopping and reaching never fire commands. With the default, 800 ms holds, confidence thresholds and the hold-still check guard against misfires |
 | Next / previous step | **`Pointing_Up` = next, `ILoveYou` (🤟) = previous**, held ≥ **800 ms**, while armed | `NEXT_STEP` / `PREV_STEP` (once per hold) | Built-in classifier gestures. Swipes and a custom landmark-based sideways point both failed in webcam tests |
 | Scroll up / down | `Thumb_Up` / `Thumb_Down` held | First tick at **600 ms**, then every **700 ms** while held, each scrolling **40% of the viewport** | Avoids up/down swipes, which collide with stirring and reaching |
 | Start / pause step timer | `Closed_Fist` held ≥ **800 ms**, score ≥ **0.8** | `TIMER_TOGGLE` (once per hold) | Distinct pose. A long hold and high score guard against a fist around a spoon handle |
@@ -1667,7 +1667,7 @@ export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
 - **Placement:** a corner widget, ≤ 20% of the screen.
 - **Contents:**
   - Optional mirrored camera thumbnail (toggle; off hides the video element but keeps inference running).
-  - State chip: "Show your palm to start" → "Ready · 4 s" → "Hold fist… ◔" → "Timer started ✓".
+  - State chip: "Show your hand" (always armed, the default) or "Show your palm to start" → "Ready · 4 s" → "Hold fist… ◔" → "Timer started ✓".
   - Radial hold-progress ring.
   - Gesture legend (5 icons).
   - Hints: "Move closer" (hand bbox < 8%), "Turn on a light" (low confidence for 3 s), "One hand please".

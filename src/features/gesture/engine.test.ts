@@ -292,6 +292,14 @@ describe('next / previous step (built-in Pointing_Up / ILoveYou)', () => {
     expect(r.actions).toEqual([]);
   });
 
+  it('switching straight from Pointing_Up to ILoveYou fires PREV_STEP 800 ms after ILoveYou starts', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 500, x: 0.3 }, { pose: 'ILoveYou', ms: 0, x: 0.7 });
+    const start = r.now - FRAME_MS; // first ILoveYou frame
+    r.run({ pose: 'ILoveYou', ms: 1000, x: 0.7 });
+    const [prev] = r.of('PREV_STEP');
+    expect(prev.t - start).toBeLessThanOrEqual(800 + FRAME_MS);
+  });
+
   it('works without arming by default (always armed)', () => {
     const r = new Rig(new GestureEngine(DEFAULT_GESTURE_CONFIG)).run({ pose: 'Pointing_Up', ms: 800 });
     expect(r.names()).toEqual(['NEXT_STEP']);

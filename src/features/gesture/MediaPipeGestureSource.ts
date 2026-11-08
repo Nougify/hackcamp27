@@ -166,7 +166,8 @@ export class MediaPipeGestureSource implements GestureSource {
       const r = this.recognizer.recognizeForVideo(v, now);
       const lm = r.landmarks[0];
       const g = r.gestures[0]?.[0];
-      if (lm) frame = { hand: { landmarks: lm, gesture: (g?.categoryName || "None") as CannedGesture, score: g?.score ?? 0 } };
+      const aspect = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : undefined;
+      if (lm) frame = { hand: { landmarks: lm, gesture: (g?.categoryName || "None") as CannedGesture, score: g?.score ?? 0 }, aspect };
       this.landmarks = lm ?? null;
     } catch {
       return; // a single bad frame is not fatal
