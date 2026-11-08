@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClass } from "@/components/ui";
+import { auth0, authDisabled } from "@/lib/auth0";
 
 const steps = [
   ["Scan", "Barcode in, pantry updated. Expiry read from a photo, confirmed by you."],
@@ -7,13 +8,19 @@ const steps = [
   ["Hands-free", "Wave to turn the page. Steps read aloud. Timers that survive a reload."],
 ];
 
-export default function Landing() {
+export default async function Landing() {
+  const signedIn = authDisabled || (await auth0.getSession()) !== null;
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
       <header className="flex items-center justify-between">
         <span className="font-display text-2xl font-semibold">Mise</span>
-        {/* Plain <a>: /auth/* are Auth0 SDK routes, not client-side pages. */}
-        <a href="/auth/login" className={buttonClass("secondary")}>Sign in</a>
+        {signedIn ? (
+          <Link href="/today" className={buttonClass("secondary")}>Open the app</Link>
+        ) : (
+          // Plain <a>: /auth/* are Auth0 SDK routes, not client-side pages.
+          <a href="/auth/login?returnTo=/today" className={buttonClass("secondary")}>Sign in</a>
+        )}
       </header>
 
       <section className="flex flex-1 flex-col justify-center py-16">
@@ -25,8 +32,11 @@ export default function Landing() {
           through them hands-free while your hands are covered in flour.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
-          <a href="/auth/login" className={buttonClass("primary", "lg")}>Get started</a>
-          <Link href="/today" className={buttonClass("ghost", "lg")}>Open the app</Link>
+          {signedIn ? (
+            <Link href="/today" className={buttonClass("primary", "lg")}>Open the app</Link>
+          ) : (
+            <a href="/auth/login?returnTo=/today" className={buttonClass("primary", "lg")}>Get started</a>
+          )}
         </div>
       </section>
 

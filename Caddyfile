@@ -1,4 +1,31 @@
-mise.tech {
+(app) {
+  reverse_proxy {
+    dynamic a web 3000
+    lb_policy least_conn
+    fail_duration 30s
+  }
+}
+
+were.cooking {
   encode zstd gzip
-  reverse_proxy web:3000
+  @landing path / /_next/* /favicon.ico
+  handle @landing {
+    import app
+  }
+  handle {
+    redir https://now.were.cooking{uri}
+  }
+}
+
+now.were.cooking {
+  encode zstd gzip
+  route {
+    @loggedout_home {
+      path /
+      not header Cookie *__session*
+    }
+    redir @loggedout_home https://were.cooking
+    redir / /today
+    import app
+  }
 }

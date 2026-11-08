@@ -15,7 +15,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return jsonError('BAD_REQUEST', 'servingsCooked must be a positive number');
     }
     const profile = await getProfileFilters(user.id);
-    return jsonOk(await getFinishPreview(user.id, profile.tz, id, servingsCooked));
+    return jsonOk(await getFinishPreview(user.id, profile.tz, id, servingsCooked, profile.pastBestBeforeGraceDays));
   } catch (err) {
     return handleRouteError(err);
   }

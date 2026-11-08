@@ -1,0 +1,23 @@
+were.cooking {
+  encode zstd gzip
+  @landing path / /_next/* /favicon.ico
+  handle @landing {
+    reverse_proxy web:3000
+  }
+  handle {
+    redir https://now.were.cooking{uri}
+  }
+}
+
+now.were.cooking {
+  encode zstd gzip
+  route {
+    @loggedout_home {
+      path /
+      not header Cookie *__session*
+    }
+    redir @loggedout_home https://were.cooking
+    redir / /today
+    reverse_proxy web:3000
+  }
+}
