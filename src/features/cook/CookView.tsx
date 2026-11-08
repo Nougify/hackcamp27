@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { CookingController, CookSessionView, VoicePlayer } from "@/contracts";
+import type { CookingController, CookSessionView } from "@/contracts";
 import { Badge, Button, buttonClass } from "@/components/ui";
-import { createBrowserVoicePlayer } from "@/features/voice";
+import { useVoice } from "@/features/voice";
 import { askNotificationPermission, ringAlarm, unlockAudio } from "./alarm";
 import { getSession, patchSession } from "./api";
 import { initCookState, makeCookReducer } from "./reducer";
@@ -71,21 +71,20 @@ function Cooking({ view }: { view: CookSessionView }) {
   const [now, setNow] = useState(() => Date.now());
   const wake = useWakeLock();
   const { poke } = wake;
-  const voice = useRef<VoicePlayer | null>(null);
+  const { player: voice, engine } = useVoice();
 
   const step = steps[state.stepIndex];
   const total = steps.length;
   const stepTimer = state.timers.find((t) => t.stepIndex === state.stepIndex);
   const stepIngredients = view.ingredients.filter((i) => i.usedInSteps.includes(state.stepIndex));
 
+  useEffect(() => voice?.onChange((speaking) => dispatch({ type: "speaking", speaking })), [voice]);
+
+  // Warm the cache for the next step's audio (SPEC F13).
   useEffect(() => {
-    voice.current = createBrowserVoicePlayer();
-    const off = voice.current.onChange((speaking) => dispatch({ type: "speaking", speaking }));
-    return () => {
-      off();
-      voice.current?.stop();
-    };
-  }, []);
+    const next = steps[state.stepIndex + 1];
+    if (started && next) voice?.prefetch(next.text);
+  }, [started, state.stepIndex, steps, voice]);
 
   // Persist on every change; debounce the server PATCH to 2 s (SPEC F11).
   useEffect(() => {
@@ -153,10 +152,10 @@ function Cooking({ view }: { view: CookSessionView }) {
       firstRender.current = false;
       return;
     }
-    voice.current?.stop();
+    voice?.stop();
     say(`Step ${state.stepIndex + 1} of ${total}`);
     window.scrollTo({ top: 0 });
-  }, [state.stepIndex, total]);
+  }, [state.stepIndex, total, voice]);
 
   const controller: CookingController = useMemo(
     () => ({
@@ -182,13 +181,12 @@ function Cooking({ view }: { view: CookSessionView }) {
       },
       toggleSpeak: () => {
         poke();
-        const v = voice.current;
-        if (!v) return;
-        if (v.speaking) v.stop();
-        else void v.speak(step.text, { cacheKey: `${session.id}:${step.index}` });
+        if (!voice) return;
+        if (voice.speaking) voice.stop();
+        else void voice.speak(step.text, { cacheKey: `${session.id}:${step.index}` });
       },
     }),
-    [poke, step, session.id],
+    [poke, step, session.id, voice],
   );
 
   // Announce timer start/pause for the current step.
@@ -230,7 +228,8 @@ function Cooking({ view }: { view: CookSessionView }) {
   // The "Start cooking" tap: unlock audio + voice and take the wake lock inside the user gesture.
   const start = (resume: SavedCook | null) => {
     unlockAudio();
-    void voice.current?.unlock();
+    void voice?.unlock();
+    voice?.prefetch(steps[resume?.stepIndex ?? 0].text);
     void wake.request();
     if (resume) dispatch({ type: "restore", stepIndex: resume.stepIndex, timers: resume.timers });
     else {
@@ -241,7 +240,7 @@ function Cooking({ view }: { view: CookSessionView }) {
   };
 
   const exit = () => {
-    voice.current?.stop();
+    voice?.stop();
     wake.release();
     router.push("/recipes");
   };
@@ -280,6 +279,7 @@ function Cooking({ view }: { view: CookSessionView }) {
               {recipe.isAdapted && <Badge tone="ai" className="ml-2">AI-adapted</Badge>}
             </p>
           </div>
+          {engine && <Badge>Voice: {engine === "elevenlabs" ? "ElevenLabs" : "Device"}</Badge>}
           {wake.supported && wake.held && <Badge tone="accent">Screen stays on</Badge>}
           <Button variant="ghost" onClick={exit}>Exit</Button>
         </div>
