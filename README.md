@@ -36,7 +36,7 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project <PROJECT_ID>
 ```
 
-Then set `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` in `.env.local` (`GOOGLE_CLOUD_LOCATION` defaults to `us-central1`). Check it works with:
+Then set `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` in `.env.local` (`GOOGLE_CLOUD_LOCATION` defaults to `global`). Check it works with:
 
 ```bash
 node --env-file=.env.local scripts/gemini-smoke.mjs
@@ -65,7 +65,7 @@ Production runs with `docker compose up -d --build` on the VPS. The server can't
 
 1. Create a service account with the **Vertex AI User** role and download its key as `gcp-sa.json`.
 2. Copy it next to `docker-compose.yml` on the server (`chmod 600`). It is gitignored; never commit or share it.
-3. Put `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION` in `.env.production`. `docker-compose.yml` mounts the key and sets `GOOGLE_APPLICATION_CREDENTIALS`.
+3. Put `GOOGLE_CLOUD_PROJECT` in `.env.production`, and set `GOOGLE_CLOUD_LOCATION=global` (or leave it out). A regional value like `us-central1` makes Gemini calls fail with "model not found". `docker-compose.yml` mounts the key and sets `GOOGLE_APPLICATION_CREDENTIALS`.
 
 ## Other scripts
 
