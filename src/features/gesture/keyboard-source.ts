@@ -10,7 +10,7 @@ export class KeyboardGestureSource implements GestureSource {
   private armed = false;
 
   private onKey = (e: KeyboardEvent) => {
-    const el = e.target as HTMLElement | null;
+    const el = e.target instanceof Element ? e.target : null;
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || el?.closest("input, textarea, select, [contenteditable]")) return;
     const action = KEYS[Number(e.key) - 1];
     if (!action) return;
