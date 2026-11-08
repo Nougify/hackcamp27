@@ -3,7 +3,7 @@ import sql from '@/lib/db';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { formatQty } from '@/lib/units';
 import { estimateRecipeNutrition, suggestLogPerServing } from '@/server/nutrition/recipe';
-import { matchIngredients } from '@/server/recipes/match';
+import { matchIngredientsSmart } from '@/server/recipes/base-names';
 import { listPantryByIds, listPantryForMatching } from '@/server/recipes/pantry-view';
 import { planDeductions } from './plan';
 import type { CookSessionView, FinishPreview } from '@/contracts/api';
@@ -203,7 +203,7 @@ export async function getFinishPreview(
   const pantry = await listPantryForMatching(userId, tz, new Date(), 200, graceDays);
   const pantryById = new Map(pantry.map((p) => [p.id, p]));
   const parsed = variantIngredients(bundle.variant).map((i) => i.parsed);
-  const matches = matchIngredients(parsed, pantry);
+  const matches = await matchIngredientsSmart(parsed, pantry);
   const variantServings = Number(bundle.variant.servings);
   const deductions = planDeductions({ ingredients: parsed, matches, pantryById, servingsCooked, variantServings });
   const nutritionPerServing = estimateRecipeNutrition({

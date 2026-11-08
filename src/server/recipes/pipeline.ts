@@ -14,7 +14,7 @@ import type {
 import type { ExtractedRecipe } from './extract';
 import { parseTimerSeconds } from './extract';
 import { applyNormalizedLines, normalizeWithGemini, parseRecipeIngredients, type NormalizedLine } from './parse';
-import { matchIngredients } from './match';
+import { matchIngredientsSmart } from './base-names';
 
 export interface PipelineContext {
   pantry: PantryItem[];
@@ -73,7 +73,7 @@ export async function processExtracted(
     };
   }
 
-  const matches = matchIngredients(ingredients, ctx.pantry);
+  const matches = await matchIngredientsSmart(ingredients, ctx.pantry);
   const nutrition = estimateRecipeNutrition({
     ingredients,
     matches,

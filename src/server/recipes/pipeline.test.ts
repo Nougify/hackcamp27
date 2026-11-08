@@ -1,4 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// No network in unit tests: the base-name fallback fails fast and first-pass matches stand.
+vi.mock('@/lib/gemini/client', () => ({
+  geminiJson: async () => {
+    throw new Error('no Gemini in unit tests');
+  },
+}));
 import { pantryFixture } from '@/contracts/fixtures';
 import type { ExtractedRecipe } from './extract';
 import { processExtracted } from './pipeline';
