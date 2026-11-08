@@ -18,7 +18,27 @@ type Seg = {
   toY?: number;
   /** hand bbox height, fraction of frame */
   size?: number;
+  /** realistic landmarks for an index finger pointing toward the screen's right/left, or up */
+  point?: 'right' | 'left' | 'up';
+  /** finger droop for sideways points: dy = tilt·dx (normalized); 0 = level */
+  tilt?: number;
 };
+
+/** Index straight, other fingers curled. Raw (unmirrored) camera coords, so screen-right = raw -x. */
+function pointLandmarks(dir: 'right' | 'left' | 'up', shiftX = 0, tilt = 0) {
+  const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+  lm[0] = { x: 0.5, y: 0.62 }; // wrist
+  lm[9] = { x: 0.5, y: 0.47 }; // middle MCP (palm size 0.15)
+  for (const [pip, tip] of [[10, 12], [14, 16], [18, 20]]) {
+    lm[pip] = { x: 0.5, y: 0.45 };
+    lm[tip] = { x: 0.5, y: 0.55 }; // curled: tip back toward the wrist
+  }
+  const sx = dir === 'right' ? -1 : dir === 'left' ? 1 : 0;
+  const sy = dir === 'up' ? -1 : tilt;
+  lm[5] = { x: 0.5, y: 0.48 };
+  for (const [i, k] of [[6, 0.05], [7, 0.09], [8, 0.13]] as const) lm[i] = { x: 0.5 + sx * k, y: 0.48 + sy * k };
+  return lm.map((p) => ({ x: p.x + shiftX, y: p.y }));
+}
 
 function frame(pose: CannedGesture, score: number, mx: number, y: number, size: number): EngineFrame {
   const x = 1 - mx; // engine input is unmirrored
@@ -55,7 +75,9 @@ class Rig {
         const f: EngineFrame =
           s.hand === false
             ? { hand: null }
-            : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
+            : s.point
+              ? { hand: { landmarks: pointLandmarks(s.point, 0.5 - this.mx, s.tilt), gesture: s.pose ?? 'None', score: s.score ?? 0.9 } }
+              : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
         for (const a of this.engine.update(f, t)) this.actions.push({ a, t });
         this.frameIdx++;
       }
@@ -239,51 +261,64 @@ describe('scroll', () => {
   });
 });
 
-describe('swipe', () => {
-  const swipeLeft = { pose: 'Open_Palm', ms: 300, x: 0.8, toX: 0.2 } satisfies Seg;
-  const swipeRight = { pose: 'Open_Palm', ms: 300, x: 0.2, toX: 0.8 } satisfies Seg;
-
-  it('right->left (mirrored) while armed = exactly one NEXT_STEP; return stroke is ignored', () => {
-    const r = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.8 }, swipeLeft, { pose: 'Open_Palm', ms: 100 }, swipeRight);
+describe('pointing (next / previous step)', () => {
+  it('pointing toward the screen right for 800 ms → exactly one NEXT_STEP, even if held', () => {
+    const r = armed().run({ point: 'right', ms: 800 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
-    expect(r.of('PREV_STEP')).toHaveLength(0);
-    r.run({ pose: 'Open_Palm', ms: 3000 });
-    expect(r.names()).toEqual(['ARM', 'NEXT_STEP']);
+    r.run({ point: 'right', ms: 3000 });
+    expect(r.of('NEXT_STEP')).toHaveLength(1);
   });
 
-  it('left->right = PREV_STEP', () => {
-    const r = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.2 }, swipeRight);
+  it('pointing toward the screen left → PREV_STEP', () => {
+    const r = armed().run({ point: 'left', ms: 800 });
     expect(r.names()).toEqual(['ARM', 'PREV_STEP']);
   });
 
-  it("swipeNextDirection 'right' inverts", () => {
-    const a = armed({ swipeNextDirection: 'right' }).run({ pose: 'Open_Palm', ms: 300, x: 0.2 }, swipeRight);
-    expect(a.names()).toEqual(['ARM', 'NEXT_STEP']);
-    const b = armed({ swipeNextDirection: 'right' }).run({ pose: 'Open_Palm', ms: 300, x: 0.8 }, swipeLeft);
-    expect(b.names()).toEqual(['ARM', 'PREV_STEP']);
+  it('wins over a misleading classifier label (e.g. Closed_Fist)', () => {
+    const r = armed().run({ point: 'right', pose: 'Closed_Fist', ms: 800 });
+    expect(r.names()).toEqual(['ARM', 'NEXT_STEP']);
   });
 
-  it('a second swipe after cooldown works', () => {
-    const r = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.8 }, swipeLeft, { pose: 'Open_Palm', ms: 1500, x: 0.8 }, swipeLeft);
-    expect(r.of('NEXT_STEP')).toHaveLength(2);
+  it('a short point does nothing', () => {
+    const r = armed().run({ point: 'right', ms: 600 }, { pose: 'Open_Palm', ms: 500 });
+    expect(r.names()).toEqual(['ARM']);
   });
 
-  it('slow drift is rejected (velocity), diagonal is rejected (dx/dy ratio), short is rejected (dx)', () => {
-    const slow = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.8 }, { pose: 'Open_Palm', ms: 2000, toX: 0.0 });
-    const diag = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.8, y: 0.2 }, { pose: 'Open_Palm', ms: 300, toX: 0.2, toY: 0.8 });
-    const short = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.6 }, { pose: 'Open_Palm', ms: 200, toX: 0.4 });
-    for (const r of [slow, diag, short]) expect(r.names()).toEqual(['ARM']);
+  it('release, then point again → second step after the cooldown', () => {
+    const r = armed().run({ point: 'right', ms: 800 }, { pose: 'Open_Palm', ms: 300 }, { point: 'right', ms: 1800 });
+    const [a, b] = r.of('NEXT_STEP');
+    expect(b.t - a.t).toBeGreaterThanOrEqual(1200);
   });
 
-  it('a fist stroke is not a swipe', () => {
-    const r = armed().run({ pose: 'Closed_Fist', ms: 0, x: 0.8 }, { pose: 'Closed_Fist', ms: 300, x: 0.8, toX: 0.2 });
+  it('pointing up is not next/previous', () => {
+    const r = armed().run({ point: 'up', ms: 3000 });
+    expect(r.names()).toEqual(['ARM']);
+  });
+
+  it('a low-confidence point never fires (dim kitchen, blurred hand)', () => {
+    const r = armed().run({ point: 'right', ms: 3000, score: 0.5 });
+    expect(r.names()).toEqual(['ARM']);
+  });
+
+  it('a moving point (finger on a knife spine while chopping) never fires', () => {
+    const r = armed();
+    for (let i = 0; i < 10; i++) r.run({ point: 'right', ms: 300, x: 0.4, toX: 0.6 }, { point: 'right', ms: 300, x: 0.6, toX: 0.4 });
     expect(r.of('NEXT_STEP')).toHaveLength(0);
   });
 
-  it('swipe extends the armed window and enters cooldown', () => {
-    const r = armed().run({ pose: 'Open_Palm', ms: 300, x: 0.8 }, { pose: 'Open_Palm', ms: 200, x: 0.8, toX: 0.2 });
-    expect(r.engine.hud(r.now - FRAME_MS).state).toBe('cooldown');
-    expect(r.engine.hud(r.now - FRAME_MS).armedRemainingMs).toBeGreaterThan(4500);
+  it('a slight droop mid-hold does not break the hold (no second step)', () => {
+    const r = armed().run({ point: 'right', ms: 800 }, { point: 'right', tilt: 0.9, ms: 300 }, { point: 'right', ms: 3000 });
+    expect(r.of('NEXT_STEP')).toHaveLength(1);
+  });
+
+  it('a strongly tilted finger is not a sideways point', () => {
+    const r = armed().run({ point: 'right', tilt: 0.9, ms: 3000 });
+    expect(r.of('NEXT_STEP')).toHaveLength(0);
+  });
+
+  it('does nothing while unarmed', () => {
+    const r = mk().run({ point: 'right', ms: 3000 }, { point: 'left', ms: 3000 });
+    expect(r.actions).toEqual([]);
   });
 });
 

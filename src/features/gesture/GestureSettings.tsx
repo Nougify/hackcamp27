@@ -10,7 +10,7 @@ const HOLD = { short: 500, normal: 800, long: 1200 } as const;
 const pick = <T extends Record<string, number>>(m: T, v: number) =>
   (Object.entries(m).reduce((best, [k, x]) => (Math.abs(x - v) < Math.abs(m[best] - v) ? k : best), Object.keys(m)[0]) as keyof T);
 
-/** Cook-mode settings (SPEC §11: Sensitivity, Hold time, Swipe direction, Always armed), saved per device. */
+/** Cook-mode settings (SPEC §11: Sensitivity, Hold time, Always armed), saved per device. */
 export function GestureSettings({
   open,
   onClose,
@@ -36,19 +36,11 @@ export function GestureSettings({
           />
         </Field>
 
-        <Field label="Hold time" hint="How long to hold a fist or victory sign.">
+        <Field label="Hold time" hint="How long to hold a point, fist or victory sign.">
           <Select
             value={pick(HOLD, g.actionHoldMs)}
             options={{ short: "Short (0.5 s)", normal: "Normal (0.8 s)", long: "Long (1.2 s)" }}
             onChange={(k) => setG({ actionHoldMs: HOLD[k], armHoldMs: Math.round(HOLD[k] * 0.75) })}
-          />
-        </Field>
-
-        <Field label="Next step">
-          <Select
-            value={g.swipeNextDirection}
-            options={{ left: "Swipe left (like a phone)", right: "Swipe right" }}
-            onChange={(k) => setG({ swipeNextDirection: k })}
           />
         </Field>
 

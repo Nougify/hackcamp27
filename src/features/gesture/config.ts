@@ -1,5 +1,6 @@
 import type { GestureConfig } from '@/contracts';
 
+// swipe* fields are unused: pointing replaced swipes (Jerry, 2026-11-07). The frozen contract still has them.
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
   minScore: 0.7, fistMinScore: 0.8, classifierScoreThreshold: 0.6,
   armHoldMs: 600, actionHoldMs: 800, armWindowMs: 5000, alwaysArmed: false,
