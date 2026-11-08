@@ -1,0 +1,13 @@
+{"error":{"code":404,"message":"Publisher model `projects/project-f42642f3-b480-41f0-9f2/locations/us-central1/publishers/google/models/gemini-3.8-flash` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.","status":"NOT_FOUND"}}
+
+---
+
+{"error":{"code":404,"message":"Publisher model `projects/project-f42642f3-b480-41f0-9f2/locations/us-central1/publishers/google/models/gemini-3.8-flash` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.","status":"NOT_FOUND"}} we get this error in prod, it works fine in my localhost but this still happens after creating a service key
+
+---
+
+env production is global (it's not on my device btw)
+
+---
+
+it still gives us the error
