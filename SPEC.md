@@ -1587,15 +1587,15 @@ No published thresholds exist for kitchen gesture control. Every number below is
 
 | User control (confirmed) | Gesture | Fires | Why |
 |---|---|---|---|
-| *(prerequisite)* Arm | `Open_Palm` held ≥ **600 ms** | `ARM`, armed for **5 s**. The window extends after each action | Stirring, chopping and reaching never fire commands |
-| Next / previous step | **Index finger pointing right / left**, held ≥ **800 ms**, while armed (detected from landmarks; replaced swipes, which didn't fire reliably in testing) | `NEXT_STEP` / `PREV_STEP` (once per hold) | Pointing toward the screen's right = next, left = previous (mirrored view) |
+| *(opt-in)* Arm | `Open_Palm` held ≥ **600 ms**. Only when "Always armed" is **off**; it is **on by default** (Jerry, 2026-11-07) | `ARM`, armed for **5 s**. The window extends after each action | When enabled, stirring, chopping and reaching never fire commands. With the default, 800 ms holds, confidence thresholds and the hold-still check guard against misfires |
+| Next / previous step | **`Pointing_Up` = next, `ILoveYou` (🤟) = previous**, held ≥ **800 ms**, while armed | `NEXT_STEP` / `PREV_STEP` (once per hold) | Built-in classifier gestures. Swipes and a custom landmark-based sideways point both failed in webcam tests |
 | Scroll up / down | `Thumb_Up` / `Thumb_Down` held | First tick at **600 ms**, then every **700 ms** while held, each scrolling **40% of the viewport** | Avoids up/down swipes, which collide with stirring and reaching |
 | Start / pause step timer | `Closed_Fist` held ≥ **800 ms**, score ≥ **0.8** | `TIMER_TOGGLE` (once per hold) | Distinct pose. A long hold and high score guard against a fist around a spoon handle |
-| Read step aloud / stop | `Victory` held ≥ **800 ms** | `SPEAK_TOGGLE` (once per hold) | Rare in kitchen motion and easier to form than ILoveYou |
+| Read step aloud / stop | `Victory` held ≥ **800 ms** | `SPEAK_TOGGLE` (once per hold) | Rare in kitchen motion. (ILoveYou is used for previous step: the only other unused built-in gesture) |
 
 Recognizer options:
 - `runningMode: 'VIDEO'`, `numHands: 1`.
-- `cannedGesturesClassifierOptions: { scoreThreshold: 0.6, categoryAllowlist: ['Open_Palm','Closed_Fist','Thumb_Up','Thumb_Down','Victory'] }`. The option comes from the [1.2.2 types](https://registry.npmjs.org/@mediapipe/tasks-vision).
+- `cannedGesturesClassifierOptions: { scoreThreshold: 0.6, categoryAllowlist: ['Open_Palm','Closed_Fist','Thumb_Up','Thumb_Down','Victory','Pointing_Up','ILoveYou'] }`. The option comes from the [1.2.2 types](https://registry.npmjs.org/@mediapipe/tasks-vision).
 - The engine applies `minScore = 0.7` (and 0.8 for the fist).
 
 ### 11.2 States and transitions
@@ -1620,12 +1620,12 @@ Recognizer options:
 
 Rules:
 - **Release-to-rearm:** a discrete pose action fires at most once per continuous hold.
-- **Global cooldown:** 1200 ms after any discrete action (point, timer, speak). Scroll ticks don't trigger it, but a release after scrolling adds a 300 ms cooldown.
+- **Global cooldown:** 1200 ms after any discrete action (next/previous, timer, speak). Scroll ticks don't trigger it, but a release after scrolling adds a 300 ms cooldown.
 - **Successful actions extend the armed window** by another 5 s from the action time.
 
 ### 11.3 Swipe detection (removed)
 
-**Superseded (Jerry, 2026-11-07):** swipes didn't fire reliably in the first webcam test, so next/previous use a held sideways point instead (`pointDirection()` in `features/gesture/engine.ts`: index straight and mostly horizontal, other fingers curled). The swipe fields stay in `GestureConfig` only because the contract is frozen. The original design follows for reference.
+**Superseded (Jerry, 2026-11-07):** swipes didn't fire in the first webcam test, and a custom landmark-based sideways point didn't either. Next/previous now use the built-in `Pointing_Up` / `ILoveYou` gestures, held like the other poses (`DISCRETE` in `features/gesture/engine.ts`, §11.1), and the index fingertip must stay still during the hold. The swipe fields stay in `GestureConfig` only because the contract is frozen. The original design follows for reference.
 
 - Palm centre = mean of landmarks **0, 5, 9, 13, 17**. Smooth with an EMA (α = 0.5) before computing velocity.
 - Mirror x so directions match what the user sees: `x' = 1 − x`. **Never use the handedness label for direction.**
@@ -1642,7 +1642,7 @@ Rules:
 ```ts
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
   minScore: 0.7, fistMinScore: 0.8, classifierScoreThreshold: 0.6,
-  armHoldMs: 600, actionHoldMs: 800, armWindowMs: 5000, alwaysArmed: false,
+  armHoldMs: 600, actionHoldMs: 800, armWindowMs: 5000, alwaysArmed: true, // default on (Jerry, 2026-11-07); palm-to-arm is opt-in
   cooldownMs: 1200, releaseMs: 300,
   scrollFirstMs: 600, scrollRepeatMs: 700, scrollFraction: 0.4,
   swipeWindowMs: 400, swipeMinDx: 0.25, swipeDxToDyRatio: 2, swipeMinVelocity: 1.0,
@@ -1667,7 +1667,7 @@ export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
 - **Placement:** a corner widget, ≤ 20% of the screen.
 - **Contents:**
   - Optional mirrored camera thumbnail (toggle; off hides the video element but keeps inference running).
-  - State chip: "Show your palm to start" → "Ready · 4 s" → "Hold fist… ◔" → "Timer started ✓".
+  - State chip: "Show your hand" (always armed, the default) or "Show your palm to start" → "Ready · 4 s" → "Hold fist… ◔" → "Timer started ✓".
   - Radial hold-progress ring.
   - Gesture legend (5 icons).
   - Hints: "Move closer" (hand bbox < 8%), "Turn on a light" (low confidence for 3 s), "One hand please".
@@ -1904,7 +1904,7 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 - **9.** Pinned exactly: `next` 16.4.5, `react`/`react-dom` 19.3.1, `@auth0/nextjs-auth0` 4.33.0, `postgres` 4.1.0, `zod` 4.6.7 (has `z.fromJSONSchema` and `z.toJSONSchema`), `@mediapipe/tasks-vision` 1.2.2, `barcode-detector` 3.2.3 (bundles `zxing-wasm` 3.1.6), `@google/genai` 3.0.0, `recipe-scrapers` 3.5.0 (TypeScript, MIT, last published 2026-10-31), `tailwindcss` 4.3.5 (via `@tailwindcss/turbopack`), `vitest` 5.1.0, `@playwright/test` 1.65.0. Kept create-next-app's `typescript` 5.9.3 and `eslint` 9.39.5 (TS 7 and ESLint 10 exist but weren't adopted), and `@types/node` 22.20.5 to match the Node 22 runtime. **Decision:** create-next-app 16.4.5 enables `cacheComponents` by default; it is **off**, so session reads render dynamically as this spec assumes. `npm run typecheck` runs `next typegen` first, so the global `PageProps`/`LayoutProps` types exist.
 - **12.** The team has an ElevenLabs key. Tier and quota are checked when `/api/tts` lands (voice branch).
 - **13.** Entire CLI 0.13.1: there is no `/session handoff` (`entire session` has `resume`, `attach`, `adopt`). `entire blame` and `entire why` are Labs commands and available. Trails work on the current plan (trails 1–3 exist). The Brain plugin isn't installed on Jerry's machine (`entire plugin install brain`). The MLH prize wording still needs to be confirmed with the rep.
-- **14.** First webcam test: swipes didn't work, so **next/previous are now "point right / point left" (held 0.8 s)** and swipe is removed (§11.1, §11.3). Other thresholds: *pending* further testing.
+- **14.** Webcam tests: swipes didn't work, nor did a custom sideways-point detector. **Next/previous are now the built-in ☝️ `Pointing_Up` / 🤟 `ILoveYou`, held 0.8 s with the fingertip still** (§11.1, §11.3). Other thresholds: *pending* further testing.
 - **16.** *Pending* until the CSP in `next.config.ts` lands (Hang), then checked in the browser console with hands-free on.
 
 ---

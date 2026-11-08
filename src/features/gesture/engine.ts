@@ -7,21 +7,19 @@ export type EngineFrame = {
     gesture: CannedGesture;
     score: number;
   };
-  /** Camera frame width / height (landmarks are normalized per axis). Default 4/3. */
+  /** Camera frame width / height; landmarks are normalized per axis. Default 4/3. */
   aspect?: number;
 };
 
 type Snapshot = Omit<GestureHud, 'fps' | 'error'>;
-/** MediaPipe has no sideways-point gesture, so the engine adds two poses detected from landmarks. */
-type Pose = CannedGesture | 'Point_Left' | 'Point_Right';
 
-const DISCRETE: Partial<Record<Pose, GestureAction>> = {
+const DISCRETE: Partial<Record<CannedGesture, GestureAction>> = {
   Closed_Fist: 'TIMER_TOGGLE',
   Victory: 'SPEAK_TOGGLE',
-  Point_Right: 'NEXT_STEP', // toward the screen's right, as the user sees themselves mirrored
-  Point_Left: 'PREV_STEP',
+  Pointing_Up: 'NEXT_STEP', // built-in classifier gestures (custom point detection didn't work on real input)
+  ILoveYou: 'PREV_STEP',
 };
-const SCROLL: Partial<Record<Pose, GestureAction>> = {
+const SCROLL: Partial<Record<CannedGesture, GestureAction>> = {
   Thumb_Up: 'SCROLL_UP',
   Thumb_Down: 'SCROLL_DOWN',
 };
@@ -30,17 +28,19 @@ const MORE_LIGHT_MS = 3000;
 const SCROLL_RELEASE_COOLDOWN_MS = 300;
 // A new pose must persist this long before it counts, so one jittery frame can't break a hold (≈2 frames at 15 fps).
 const POSE_SETTLE_MS = 150;
-const POINT_MAX_DRIFT = 0.05; // index-tip movement (fraction of frame) allowed during a point hold
+// Next/previous poses must be held still: an index finger on a knife spine while chopping moves, and restarts the hold.
+const STILL: Partial<Record<CannedGesture, true>> = { Pointing_Up: true, ILoveYou: true };
+const STILL_MAX_DRIFT = 0.05; // index-tip movement allowed during the hold (fraction of frame height; x scaled by aspect)
 
 export class GestureEngine {
   private cfg: GestureConfig;
   private present = false;       // a valid hand was seen and not yet lost >= releaseMs
   private lastSeen = 0;
-  private pose: Pose = 'None';
+  private pose: CannedGesture = 'None';
   private poseSince = 0;
-  private cand: Pose = 'None'; // raw pose waiting to settle
+  private cand: CannedGesture = 'None'; // raw pose waiting to settle
   private candSince = 0;
-  private pointAnchor: Pt | null = null; // index tip where the current point hold started
+  private anchor: { x: number; y: number } | null = null; // index tip where a STILL hold started
   private fired = false;         // one-shot latch per continuous pose hold (ARM or discrete action)
   private needRelease = false;   // discrete pose action fired; pose must change before re-arming
   private cooldownUntil = 0;
@@ -55,11 +55,6 @@ export class GestureEngine {
     this.cfg = config;
   }
 
-  /** Internal pose, including Point_Left/Point_Right (the HUD contract only has canned names). For debug. */
-  get debugPose(): string {
-    return this.pose;
-  }
-
   setConfig(c: GestureConfig): void {
     this.cfg = c;
   }
@@ -71,7 +66,7 @@ export class GestureEngine {
     this.poseSince = 0;
     this.cand = 'None';
     this.candSince = 0;
-    this.pointAnchor = null;
+    this.anchor = null;
     this.fired = false;
     this.needRelease = false;
     this.cooldownUntil = 0;
@@ -124,12 +119,7 @@ export class GestureEngine {
     if (this.lowSince !== null && now - this.lowSince >= MORE_LIGHT_MS) hint = 'more_light';
     this.hint = hint;
 
-    // A sideways point wins over the classifier label (it may call it a fist or None), but only on
-    // confident frames. Once pointing, a looser angle keeps landmark noise from breaking the hold.
-    const isPoint = (p: Pose) => p === 'Point_Left' || p === 'Point_Right';
-    const point = low ? null : pointDirection(h.landmarks, frame.aspect, isPoint(this.pose) || isPoint(this.cand));
-    const raw: Pose =
-      point ?? (low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture);
+    const raw: CannedGesture = low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture;
     if (raw !== this.cand) {
       this.cand = raw;
       this.candSince = now;
@@ -140,6 +130,7 @@ export class GestureEngine {
       this.nextScroll = null;
       this.needRelease = false;
       this.fired = false;
+      this.anchor = null; // e.g. Pointing_Up → ILoveYou: don't measure drift from the old hold
       this.pose = this.cand;
       this.poseSince = this.candSince; // hold timing counts from when the pose first appeared
     }
@@ -147,17 +138,15 @@ export class GestureEngine {
     // Debouncing only protects the latch; actions need the pose to be showing right now.
     const steady = raw === pose;
 
-    // A point must be held still: a moving index finger (e.g. on a knife spine while chopping) restarts the hold.
-    if (isPoint(pose) && steady) {
+    if (STILL[pose] && steady) {
       const tip = h.landmarks[8];
-      if (!this.pointAnchor) {
-        this.pointAnchor = tip;
-      } else if (!this.fired && dist(tip, this.pointAnchor) > POINT_MAX_DRIFT) {
-        this.pointAnchor = tip;
+      if (!this.anchor) this.anchor = tip;
+      else if (!this.fired && Math.hypot((tip.x - this.anchor.x) * (frame.aspect ?? 4 / 3), tip.y - this.anchor.y) > STILL_MAX_DRIFT) {
+        this.anchor = tip;
         this.poseSince = now; // moved: start the hold again
       }
-    } else if (!isPoint(pose)) {
-      this.pointAnchor = null;
+    } else if (!STILL[pose]) {
+      this.anchor = null;
     }
 
     if (!this.isArmed()) {
@@ -230,7 +219,7 @@ export class GestureEngine {
     }
     return {
       state,
-      pose: pose === 'Point_Left' || pose === 'Point_Right' ? 'Pointing_Up' : pose, // contract only knows canned names
+      pose,
       holdProgress: Math.min(1, Math.max(0, holdProgress)),
       pendingAction,
       armedRemainingMs: this.isArmed() && !c.alwaysArmed ? Math.max(0, this.armedUntil - now) : 0,
@@ -262,28 +251,7 @@ export class GestureEngine {
     this.poseSince = now;
     this.cand = 'None';
     this.candSince = now;
-    this.pointAnchor = null;
+    this.anchor = null;
   }
 
-}
-
-type Pt = { x: number; y: number };
-const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
-
-/** Index finger straight and sideways, other fingers curled → which way it points on screen (mirrored view). */
-export function pointDirection(lm: Pt[], aspect = 4 / 3, sticky = false): 'Point_Left' | 'Point_Right' | null {
-  if (lm.length < 21) return null;
-  const [wrist, mcp, pip, tip] = [lm[0], lm[5], lm[6], lm[8]];
-  const palm = dist(wrist, lm[9]);
-  if (palm < 1e-3) return null;
-  // Index extended: tip well away from its knuckle and farther from the wrist than its middle joint.
-  if (dist(mcp, tip) < 0.6 * palm || dist(wrist, tip) < dist(wrist, pip)) return null;
-  // Middle, ring and pinky curled: each tip closer to the wrist than its middle joint.
-  for (const [p, t] of [[10, 12], [14, 16], [18, 20]]) if (dist(wrist, lm[t]) > dist(wrist, lm[p])) return null;
-  // Mostly horizontal (in pixels, not normalized units).
-  const dx = (tip.x - mcp.x) * aspect; // landmarks are normalized per axis; compare in pixels
-  const dy = tip.y - mcp.y;
-  if (Math.abs(dx) < (sticky ? 1.2 : 2) * Math.abs(dy)) return null; // hysteresis once already pointing
-  // Raw camera x is mirrored on screen: a tip further LEFT in the raw image points to the screen's RIGHT.
-  return dx < 0 ? 'Point_Right' : 'Point_Left';
 }

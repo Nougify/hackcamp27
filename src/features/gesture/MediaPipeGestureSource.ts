@@ -3,7 +3,7 @@ import type { CannedGesture, GestureAction, GestureConfig, GestureHud, GestureSo
 import { GestureEngine, type EngineFrame } from "./engine";
 
 type HudError = NonNullable<GestureHud["error"]>;
-const ALLOW: CannedGesture[] = ["Open_Palm", "Closed_Fist", "Thumb_Up", "Thumb_Down", "Victory"];
+const ALLOW: CannedGesture[] = ["Open_Palm", "Closed_Fist", "Thumb_Up", "Thumb_Down", "Victory", "Pointing_Up", "ILoveYou"];
 const HUD_INTERVAL_MS = 100; // ≤ 10 Hz (contract)
 
 function idleHud(state: GestureHud["state"], error?: HudError): GestureHud {
@@ -25,10 +25,6 @@ export class MediaPipeGestureSource implements GestureSource {
   private lastHandAt = 0;
   private lastHudAt = 0;
   private frames: number[] = [];
-  /** Engine's internal pose (shows Point_Left/Right), for the debug overlay. */
-  get debugPose() {
-    return this.engine.debugPose;
-  }
   /** Latest landmarks, for the NEXT_PUBLIC_GESTURE_DEBUG overlay. */
   landmarks: Array<{ x: number; y: number }> | null = null;
 
