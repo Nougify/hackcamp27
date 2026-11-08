@@ -1,8 +1,13 @@
-export default function Page() {
+import { SearchStream } from '@/features/recipes/SearchStream';
+
+export default function RecipesPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <h1 className="font-display text-3xl font-semibold">Recipes</h1>
-      <p className="mt-2 text-muted">TODO (Hang)</p>
+    <main className="pt-6">
+      <h1 className="text-2xl font-bold">Find recipes</h1>
+      <p className="mb-4 mt-1 text-sm text-text-muted">
+        Real recipes from the web, ranked toward whatever expires soonest.
+      </p>
+      <SearchStream />
     </main>
   );
 }

@@ -1,0 +1,15 @@
+import { requireUser } from '@/lib/current-user';
+import { handleRouteError, jsonOk } from '@/lib/http';
+import { fixtureProduct } from '@/contracts/fixtures/product';
+
+export const runtime = 'nodejs';
+
+// Phase 0 stub (owner: B).
+export async function POST() {
+  try {
+    await requireUser();
+    return jsonOk({ status: 'found', product: fixtureProduct, cached: true, attempts: [] });
+  } catch (err) {
+    return handleRouteError(err);
+  }
+}

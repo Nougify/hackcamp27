@@ -49,3 +49,4 @@ next-env.d.ts
 
 # playwright MCP output
 /.playwright-mcp/
+!.env.example

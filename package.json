@@ -13,13 +13,16 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "postinstall": "node scripts/copy-assets.mjs",
-    "prebuild": "node scripts/copy-assets.mjs"
+    "prebuild": "node scripts/copy-assets.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "test:db": "node scripts/migrate.mjs --test && vitest run --mode db"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "4.33.0",
     "@google/genai": "3.0.0",
     "@mediapipe/tasks-vision": "1.2.2",
     "barcode-detector": "3.2.3",
+    "cheerio": "1.2.0",
     "next": "16.4.5",
     "postgres": "4.1.0",
     "react": "19.3.1",
