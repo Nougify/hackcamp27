@@ -22,7 +22,7 @@ export function Ring({ label, value, goal, unit }: { label: string; value: numbe
     return (
       <div className="grid justify-items-center gap-2 py-2">
         <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-6xl font-semibold leading-none tabular-nums">{shown}</span>
+          <span className="font-display text-6xl font-semibold leading-none tracking-tighter tabular-nums">{shown}</span>
           <span className="text-lg leading-none text-muted">{unit}</span>
         </div>
         <p className="mt-2 text-sm font-semibold">{label}</p>
