@@ -1896,6 +1896,15 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 | 15 | `next dev --experimental-https` flag; sslip.io fallback; Dockerfile standalone paths | Dev and deploy | Try them |
 | 16 | `'wasm-unsafe-eval'` needed in the CSP for MediaPipe and zxing WASM | CSP | Enable the CSP in staging and watch the console |
 
+**Answers (Jerry, 2026-11-07)**
+
+- **8.** The model URL serves. `public/models/gesture_recognizer.task` is committed (8,373,440 bytes, sha256 `97952348cf6a6a4915c2ea1496b4b37ebabc50cbbf80571435643c455f2b0482`). GPU vs CPU and laptop FPS: *pending a manual test on the demo laptop* (gestures branch).
+- **9.** Pinned exactly: `next` 16.4.5, `react`/`react-dom` 19.3.1, `@auth0/nextjs-auth0` 4.33.0, `postgres` 4.1.0, `zod` 4.6.7 (has `z.fromJSONSchema` and `z.toJSONSchema`), `@mediapipe/tasks-vision` 1.2.2, `barcode-detector` 3.2.3 (bundles `zxing-wasm` 3.1.6), `@google/genai` 3.0.0, `recipe-scrapers` 3.5.0 (TypeScript, MIT, last published 2026-10-31), `tailwindcss` 4.3.5 (via `@tailwindcss/turbopack`), `vitest` 5.1.0, `@playwright/test` 1.65.0. Kept create-next-app's `typescript` 5.9.3 and `eslint` 9.39.5 (TS 7 and ESLint 10 exist but weren't adopted), and `@types/node` 22.20.5 to match the Node 22 runtime. **Decision:** create-next-app 16.4.5 enables `cacheComponents` by default; it is **off**, so session reads render dynamically as this spec assumes. `npm run typecheck` runs `next typegen` first, so the global `PageProps`/`LayoutProps` types exist.
+- **12.** The team has an ElevenLabs key. Tier and quota are checked when `/api/tts` lands (voice branch).
+- **13.** Entire CLI 0.13.1: there is no `/session handoff` (`entire session` has `resume`, `attach`, `adopt`). `entire blame` and `entire why` are Labs commands and available. Trails work on the current plan (trails 1–3 exist). The Brain plugin isn't installed on Jerry's machine (`entire plugin install brain`). The MLH prize wording still needs to be confirmed with the rep.
+- **14.** *Pending* hallway test once hands-free works (gestures branch).
+- **16.** *Pending* until the CSP in `next.config.ts` lands (Hang), then checked in the browser console with hands-free on.
+
 ---
 
 ## 18. Parallel build plan: 3 Claude Code accounts through Entire

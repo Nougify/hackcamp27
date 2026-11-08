@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Mise design tokens. Warm kitchen palette, herb-green accent.
+   App is light; cook mode is dark (wrap it in .theme-cook). */
+:root {
+  --bg: #faf6ef;
+  --surface: #ffffff;
+  --surface-2: #f2ebe0;
+  --ink: #221d17;
+  --muted: #6b6155;
+  --line: #e4dacb;
+  --accent: #3d7a4b;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3efe4;
+  --warn: #b45309;
+  --warn-soft: #fdf0dc;
+  --danger: #b42318;
+  --danger-soft: #fde8e6;
+  --ai: #5b4bb7;
+  --ai-soft: #ece9fb;
+}
+
+.theme-cook {
+  --bg: #13110e;
+  --surface: #1d1a16;
+  --surface-2: #2a2621;
+  --ink: #f7f2ea;
+  --muted: #b9ae9f;
+  --line: #3a342d;
+  --accent: #7fc48f;
+  --accent-ink: #10200f;
+  --accent-soft: #23362a;
+  --warn: #f5b04c;
+  --warn-soft: #3a2b14;
+  --danger: #ff8a7a;
+  --danger-soft: #3d1c18;
+  --ai: #b3a8ff;
+  --ai-soft: #2a2546;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
