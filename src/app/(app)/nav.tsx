@@ -24,7 +24,7 @@ export function AppNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] md:static md:order-first md:border-b md:border-t-0 md:shadow-none"
     >
       <div className="mx-auto flex max-w-5xl items-center px-2 md:px-6">
-        <Link href="/today" className="mr-8 hidden font-display text-xl font-semibold tracking-tight md:block">Chefly</Link>
+        <Link href="/today" className="mr-8 hidden font-display text-2xl font-semibold tracking-tight md:block">Chefly</Link>
         {links.map((l) => {
           const active = path.startsWith(l.href);
           return (

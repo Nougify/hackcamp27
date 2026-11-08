@@ -11,8 +11,8 @@ export function Ring({ label, value, goal, unit }: { label: string; value: numbe
   const shown = Math.round(value);
   const center = (
     <>
-      <span className="font-display text-2xl font-semibold tabular-nums">{shown}</span>
-      <span className="text-xs text-muted">{unit}</span>
+      <span className="font-display text-3xl font-semibold leading-none tabular-nums">{shown}</span>
+      <span className="mt-1 text-xs leading-none text-muted">{unit}</span>
     </>
   );
 
