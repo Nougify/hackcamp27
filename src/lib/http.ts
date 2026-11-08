@@ -79,9 +79,13 @@ export function ndjsonResponse<T>(
       try {
         await producer(write, abort.signal);
       } catch (err) {
+        // @google/genai ApiError carries the HTTP status; 429 = Gemini quota used up.
+        const quota = (err as { status?: number } | null)?.status === 429;
         write({
           type: 'error',
-          error: { code: 'INTERNAL', message: err instanceof Error ? err.message : 'Unknown error' },
+          error: quota
+            ? { code: 'RATE_LIMITED', message: 'The AI service is out of quota right now. Try again in a minute.' }
+            : { code: 'INTERNAL', message: err instanceof Error ? err.message : 'Unknown error' },
         } as T);
       } finally {
         if (!abort.signal.aborted) controller.close();

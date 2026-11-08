@@ -10,7 +10,7 @@ Verified: `npm run typecheck` ✓, `npm run lint` (0 errors) ✓, `npm test` (26
   grounding read from `candidates[0].groundingMetadata` (`groundingChunks[].web`, `webSearchQueries`,
   `searchEntryPoint.renderedContent`). JSON mode via `responseMimeType: 'application/json'` + `responseSchema`,
   images as `{ inlineData: { mimeType, data } }` parts. Implemented in `src/lib/gemini/client.ts`.
-  Live proof still needs a key: `GEMINI_API_KEY=... node scripts/gemini-smoke.mjs`.
+  Live proof: `gcloud auth application-default login`, then `GOOGLE_CLOUD_PROJECT=... node scripts/gemini-smoke.mjs`.
 - **Item 2 — Grounding terms: NOT resolved, needs a human.** I could not read the Gemini API Additional
   Terms from here. Implementation follows the SPEC's cautious default: 24 h discovery-URL cache
   (`recipe_search_cache`), `searchEntryPoint.renderedContent` rendered unmodified in a sandboxed
@@ -63,7 +63,7 @@ Verified: `npm run typecheck` ✓, `npm run lint` (0 errors) ✓, `npm test` (26
 
 ## Human actions still needed (need real credentials / accounts)
 
-1. `GEMINI_API_KEY` → run `node scripts/gemini-smoke.mjs`, then `npm run dev` search for real.
+1. ADC + `GOOGLE_CLOUD_PROJECT` → run `node scripts/gemini-smoke.mjs`, then `npm run dev` search for real.
 2. Tiger service (`mise-db`) + fork (`mise-test`) → `DATABASE_URL`, `DATABASE_URL_TEST` → `npm run migrate`, `npm run test:db`.
 3. Auth0 tenant URLs (callback/logout/origins) for localhost + production (§10.7).
 4. Vultr VPS + domain (or sslip.io) → `.env.production` (chmod 600) → compose up → `/api/health`.

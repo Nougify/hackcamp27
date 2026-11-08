@@ -1039,7 +1039,8 @@ export type ManualMealRequest =
 | `DATABASE_URL` | server | yes | from `tiger db connection-string` | Typically `postgres://tsdbadmin:…@host:port/tsdb?sslmode=require` **[VERIFY format]** |
 | `DB_POOL_MAX` | server | no | `5` | postgres.js `max` |
 | `DATABASE_URL_TEST` | server (tests) | no | connection string of a `tiger service fork` | `npm run test:db` only; never production |
-| `GEMINI_API_KEY` | server | yes | | Gemini API |
+| `GOOGLE_CLOUD_PROJECT` | server | yes | | Vertex AI project (auth via ADC) |
+| `GOOGLE_CLOUD_LOCATION` | server | no | `us-central1` | Vertex AI region |
 | `GEMINI_MODEL` | server | no | `gemini-3.8-flash` | Vision, adaptation, normalization |
 | `GEMINI_SEARCH_MODEL` | server | no | `gemini-3.8-flash` | Grounded discovery. Try `gemini-3.5-flash-lite` for latency **[VERIFY grounding support]** |
 | `DATAANDAPIS_KEY` | server | yes | | `X-Api-Key` for barcode lookup |
