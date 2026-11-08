@@ -1,4 +1,8 @@
-mise.tech {
+now.were.cooking {
   encode zstd gzip
   reverse_proxy web:3000
+}
+
+were.cooking {
+  redir https://now.were.cooking{uri} permanent
 }
