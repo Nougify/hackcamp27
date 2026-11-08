@@ -23,9 +23,9 @@
     "api_call_count": 45
   },
   "redaction": {
-    "replacements": 13,
+    "replacements": 15,
     "layers": {
-      "betterleaks": 2,
+      "betterleaks": 4,
       "connection_string": 0,
       "credential_key": 0,
       "credential_value": 2,
@@ -66,6 +66,37 @@
       "collapse": {
         "target": "tool_pair",
         "label": "Skill: schedule",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_0111NKPeMAYpwmac67B75tyb",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "loop"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "eaedbe0b9895",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 682,
+        "end": 683,
+        "entry_ids": [
+          "d2a66762-a58b-4f7d-bc10-3206f8976923"
+        ],
+        "tool_use_id": "toolu_0111NKPeMAYpwmac67B75tyb"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_0111NKPeMAYpwmac67B75tyb"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: loop",
         "default_collapsed": true
       }
     }
