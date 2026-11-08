@@ -12,7 +12,7 @@ import { itemNutritionLines } from './nutrition-text';
 import { ProductForm, type ProductFormValues } from './ProductForm';
 
 // SPEC F5 + F10 (item part): pantry list sorted by soonest best-before, colour band + text,
-// inline adjust / discard / edit / delete, "Include empty" with Restock.
+// inline adjust / discard / edit / delete. Empty items are hidden.
 
 type Sort = 'expiry' | 'name';
 
@@ -22,14 +22,13 @@ export function PantryList({ initialItems, graceDays, addSlot }: { initialItems:
   const toast = useToast();
   const [items, setItems] = useState(initialItems);
   const [sort, setSort] = useState<Sort>('expiry');
-  const [includeEmpty, setIncludeEmpty] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PantryItem | null>(null);
   const [deleting, setDeleting] = useState<PantryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async (next: { sort: Sort; includeEmpty: boolean }) => {
+  const reload = useCallback(async (next: { sort: Sort }) => {
     setLoading(true);
     setError(null);
     try {
@@ -41,7 +40,7 @@ export function PantryList({ initialItems, graceDays, addSlot }: { initialItems:
     }
   }, []);
 
-  const view = { sort, includeEmpty };
+  const view = { sort };
   const run = async (action: () => Promise<unknown>, done: string) => {
     setError(null);
     try {
@@ -100,23 +99,12 @@ export function PantryList({ initialItems, graceDays, addSlot }: { initialItems:
             onChange={(e) => {
               const s = e.target.value as Sort;
               setSort(s);
-              void reload({ sort: s, includeEmpty });
+              void reload({ sort: s });
             }}
           >
             <option value="expiry">Best before (soonest first)</option>
             <option value="name">Name</option>
           </select>
-        </label>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={includeEmpty}
-            onChange={(e) => {
-              setIncludeEmpty(e.target.checked);
-              void reload({ sort, includeEmpty: e.target.checked });
-            }}
-          />
-          Include empty
         </label>
       </div>
 

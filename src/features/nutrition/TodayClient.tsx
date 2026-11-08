@@ -66,11 +66,13 @@ export function TodayClient({
 
   return (
     <div className="mt-6 grid gap-6">
-      <Card className="flex flex-wrap items-center justify-around gap-6">
-        <Ring label="Calories" value={totals.kcal} goal={totals.kcalGoal} unit="kcal" />
-        <Ring label="Protein" value={totals.proteinG} goal={totals.proteinGoalG} unit="g" />
-        <Button size="lg" onClick={() => setLogOpen(true)}>
-          Log food
+      <Card className="grid gap-6">
+        <div className="grid grid-cols-2 justify-items-center gap-4">
+          <Ring label="Calories" value={totals.kcal} goal={totals.kcalGoal} unit="kcal" />
+          <Ring label="Protein" value={totals.proteinG} goal={totals.proteinGoalG} unit="g" />
+        </div>
+        <Button size="lg" className="h-16 w-full text-xl!" onClick={() => setLogOpen(true)}>
+          + Log food
         </Button>
       </Card>
 

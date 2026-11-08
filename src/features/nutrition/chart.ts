@@ -1,7 +1,7 @@
 // Geometry for the hand-rolled /today charts. Pure.
 
 /** Passes the chart palette validator on the app's surfaces; the --accent token reads too gray. */
-export const CHART_COLOR = '#2e8540';
+export const CHART_COLOR = '#b83a09';
 
 /** Smallest 1/2/5 × 10ⁿ at or above `value`, so the top axis label is a round number. */
 export function niceCeil(value: number): number {
