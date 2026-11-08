@@ -25,7 +25,11 @@ export function ringAlarm(label: string) {
   if (ctx) for (let i = 0; i < 3; i++) beep(ctx.currentTime + i * 0.35, 880, 0.25);
   navigator.vibrate?.([300, 150, 300, 150, 300]);
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    new Notification("Timer done", { body: label, tag: label });
+    try {
+      new Notification("Timer done", { body: label, tag: label });
+    } catch {
+      // Android Chrome only allows notifications from a service worker; beep + vibrate still ran.
+    }
   }
 }
 

@@ -25,9 +25,10 @@ export async function getSession(id: string): Promise<CookSessionView> {
   return call(`/api/cook/sessions/${id}`);
 }
 
-export async function patchSession(id: string, body: UpdateSessionRequest): Promise<CookingSession> {
+/** `keepalive` lets the request outlive the page (exit, tab close). */
+export async function patchSession(id: string, body: UpdateSessionRequest, keepalive = false): Promise<CookingSession> {
   if (useFixtures) return { ...(await fixtures()).cookingSessionFixture, ...body } as CookingSession;
-  return call(`/api/cook/sessions/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+  return call(`/api/cook/sessions/${id}`, { method: "PATCH", body: JSON.stringify(body), keepalive });
 }
 
 export async function getFinishPreview(id: string, servingsCooked: number): Promise<FinishPreview> {

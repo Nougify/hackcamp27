@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const INACTIVITY_MS = 30 * 60_000;
 
@@ -10,6 +10,7 @@ export function useWakeLock() {
   const supported = typeof navigator !== "undefined" && "wakeLock" in navigator;
   const sentinel = useRef<WakeLockSentinel | null>(null);
   const wanted = useRef(false);
+  const idle = useRef(false); // 30 min without interaction: don't re-take the lock on tab return
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [held, setHeld] = useState(false);
 
@@ -17,6 +18,11 @@ export function useWakeLock() {
     if (!supported || document.visibilityState !== "visible") return;
     try {
       const s = await navigator.wakeLock.request("screen");
+      // Released, unmounted, or another acquire won while we waited: don't leak this lock.
+      if (!wanted.current || idle.current || (sentinel.current && !sentinel.current.released)) {
+        void s.release();
+        return;
+      }
       sentinel.current = s;
       setHeld(true);
       s.addEventListener("release", () => setHeld(false));
@@ -35,8 +41,10 @@ export function useWakeLock() {
   /** Call on any user interaction to restart the 30-minute inactivity window. */
   const poke = useCallback(() => {
     if (!wanted.current) return;
+    idle.current = false;
     clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => {
+      idle.current = true;
       sentinel.current?.release().catch(() => {});
       sentinel.current = null;
     }, INACTIVITY_MS);
@@ -51,7 +59,7 @@ export function useWakeLock() {
 
   useEffect(() => {
     const onVis = () => {
-      if (wanted.current && document.visibilityState === "visible" && (!sentinel.current || sentinel.current.released)) void acquire();
+      if (wanted.current && !idle.current && document.visibilityState === "visible" && (!sentinel.current || sentinel.current.released)) void acquire();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -60,5 +68,5 @@ export function useWakeLock() {
     };
   }, [acquire, release]);
 
-  return { supported, held, request, release, poke };
+  return useMemo(() => ({ supported, held, request, release, poke }), [supported, held, request, release, poke]);
 }

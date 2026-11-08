@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { CookingController, CookSessionView, VoicePlayer } from "@/contracts";
 import { Badge, Button, buttonClass } from "@/components/ui";
 import { createBrowserVoicePlayer } from "@/features/voice";
@@ -70,6 +70,7 @@ function Cooking({ view }: { view: CookSessionView }) {
   };
   const [now, setNow] = useState(() => Date.now());
   const wake = useWakeLock();
+  const { poke } = wake;
   const voice = useRef<VoicePlayer | null>(null);
 
   const step = steps[state.stepIndex];
@@ -92,11 +93,34 @@ function Cooking({ view }: { view: CookSessionView }) {
     saveCook({ sessionId: session.id, stepIndex: state.stepIndex, timers: state.timers, updatedAt: Date.now() });
   }, [started, session.id, state.stepIndex, state.timers]);
 
+  const sentStep = useRef(session.currentStep);
+  const stepRef = useRef(state.stepIndex);
+  useEffect(() => {
+    stepRef.current = state.stepIndex;
+  }, [state.stepIndex]);
+  const sendStep = useCallback(
+    (keepalive = false) => {
+      const step = stepRef.current;
+      if (step === sentStep.current) return;
+      sentStep.current = step;
+      patchSession(session.id, { currentStep: step }, keepalive).catch(() => {});
+    },
+    [session.id],
+  );
   useEffect(() => {
     if (!started) return;
-    const t = setTimeout(() => patchSession(session.id, { currentStep: state.stepIndex }).catch(() => {}), 2000);
+    const t = setTimeout(() => sendStep(), 2000);
     return () => clearTimeout(t);
-  }, [started, session.id, state.stepIndex]);
+  }, [started, state.stepIndex, sendStep]);
+  // Flush a pending step on exit/unmount/tab close instead of dropping it.
+  useEffect(() => {
+    const flush = () => sendStep(true);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [sendStep]);
 
   // Tick while any timer runs; check immediately when the tab comes back (hidden tabs are throttled).
   const running = state.timers.some((t) => t.status === "running");
@@ -137,32 +161,34 @@ function Cooking({ view }: { view: CookSessionView }) {
   const controller: CookingController = useMemo(
     () => ({
       nextStep: () => {
-        wake.poke();
+        poke();
         dispatch({ type: "next" });
       },
       prevStep: () => {
-        wake.poke();
+        poke();
         dispatch({ type: "prev" });
       },
       scroll: (direction) => {
-        wake.poke();
+        poke();
         const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
         window.scrollBy({ top: (direction === "down" ? 0.4 : -0.4) * innerHeight, behavior: reduce ? "auto" : "smooth" });
       },
       toggleTimer: () => {
-        wake.poke();
+        poke();
         askNotificationPermission();
-        dispatch({ type: "toggleTimer", now: Date.now() });
+        const n = Date.now();
+        setNow(n); // the tick interval only starts on the next render
+        dispatch({ type: "toggleTimer", now: n });
       },
       toggleSpeak: () => {
-        wake.poke();
+        poke();
         const v = voice.current;
         if (!v) return;
         if (v.speaking) v.stop();
         else void v.speak(step.text, { cacheKey: `${session.id}:${step.index}` });
       },
     }),
-    [wake, step, session.id],
+    [poke, step, session.id],
   );
 
   // Announce timer start/pause for the current step.
@@ -178,7 +204,7 @@ function Cooking({ view }: { view: CookSessionView }) {
   useEffect(() => {
     if (!started) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest("input, textarea, select, dialog")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || (e.target instanceof Element && e.target.closest("input, textarea, select, dialog"))) return;
       const map: Record<string, () => void> = {
         ArrowRight: controller.nextStep,
         ArrowLeft: controller.prevStep,
