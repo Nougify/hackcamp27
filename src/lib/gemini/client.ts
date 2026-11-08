@@ -10,6 +10,7 @@ function getClient(): GoogleGenAI {
   if (!client) {
     const env = getEnv();
     client = new GoogleGenAI({ vertexai: true, project: env.GOOGLE_CLOUD_PROJECT, location: env.GOOGLE_CLOUD_LOCATION });
+    console.info(`[gemini] vertex project=${env.GOOGLE_CLOUD_PROJECT} location=${env.GOOGLE_CLOUD_LOCATION}`);
   }
   return client;
 }
