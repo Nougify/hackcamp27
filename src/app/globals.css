@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Mise design tokens. Warm kitchen palette, herb-green accent.
+/* Mise design tokens. Warm kitchen palette, burnt-orange accent.
    App is light; cook mode is dark (wrap it in .theme-cook). */
 :root {
   --bg: #faf6ef;
@@ -9,13 +9,13 @@
   --ink: #221d17;
   --muted: #6b6155;
   --line: #e4dacb;
-  --accent: #3d7a4b;
-  --accent-ink: #ffffff;
-  --accent-soft: #e3efe4;
-  --warn: #b45309;
-  --warn-soft: #fdf0dc;
-  --danger: #b42318;
-  --danger-soft: #fde8e6;
+  --accent: #b83a09;
+  --accent-ink: #fff8f1;
+  --accent-soft: #fbe6da;
+  --warn: #8a5a00;
+  --warn-soft: #fbf1cf;
+  --danger: #a1123f;
+  --danger-soft: #fce7ee;
   --ai: #5b4bb7;
   --ai-soft: #ece9fb;
 }
@@ -27,13 +27,13 @@
   --ink: #f7f2ea;
   --muted: #b9ae9f;
   --line: #3a342d;
-  --accent: #7fc48f;
-  --accent-ink: #10200f;
-  --accent-soft: #23362a;
+  --accent: #ff8a57;
+  --accent-ink: #2a1206;
+  --accent-soft: #3a2319;
   --warn: #f5b04c;
   --warn-soft: #3a2b14;
-  --danger: #ff8a7a;
-  --danger-soft: #3d1c18;
+  --danger: #ff7a9a;
+  --danger-soft: #3d1c28;
   --ai: #b3a8ff;
   --ai-soft: #2a2546;
   background: var(--bg);
@@ -56,13 +56,18 @@
   --color-danger-soft: var(--danger-soft);
   --color-ai: var(--ai);
   --color-ai-soft: var(--ai-soft);
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-manrope);
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
+  font-weight: 500;
+}
+
+.font-display {
+  font-weight: 800;
 }
 
 :focus-visible {

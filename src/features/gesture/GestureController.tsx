@@ -220,6 +220,6 @@ function drawLandmarks(c: HTMLCanvasElement | null, lm: Array<{ x: number; y: nu
   const ctx = c?.getContext("2d");
   if (!c || !ctx) return;
   ctx.clearRect(0, 0, c.width, c.height);
-  ctx.fillStyle = "#7fc48f";
+  ctx.fillStyle = "#ff8a57";
   for (const p of lm ?? []) ctx.fillRect((1 - p.x) * c.width - 2, p.y * c.height - 2, 4, 4); // mirrored like the video
 }

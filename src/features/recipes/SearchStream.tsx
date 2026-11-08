@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RecipeSearchEvent, RecipeSearchRequest } from '@/contracts/api';
 import type { RecipeCandidate } from '@/contracts/domain';
 import { Button, Card } from '@/components/ui';
-import { RecipeCard } from './RecipeCard';
+import { canMake, RecipeCard } from './RecipeCard';
 
 interface SearchState {
   running: boolean;
@@ -106,7 +106,19 @@ export function SearchStream() {
     }
   };
 
-  const sorted = [...state.candidates].sort((a, b) => b.score.score - a.score.score);
+  // Search once on load; the ref survives StrictMode's double effect run.
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (autoSearched.current) return;
+    autoSearched.current = true;
+    search();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Recipes the user can make right now go first, then by score.
+  const sorted = [...state.candidates].sort(
+    (a, b) => Number(canMake(b)) - Number(canMake(a)) || b.score.score - a.score.score,
+  );
 
   return (
     <div>
