@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01TZQFR5UMP7NbxSNUTsmqmY",
+  "agent_id": "afd25ed857ff2ecd1",
+  "subagent_type": "code-reviewer",
+  "task_description": "Review scan/pantry diff",
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 22243,
+    "cache_read_tokens": 67214,
+    "output_tokens": 2414,
+    "api_call_count": 5
+  },
+  "started_at": "2026-11-08T06:07:05.6585938-07:00",
+  "completed_at": "2026-11-08T06:07:31.8980802-07:00"
+}
