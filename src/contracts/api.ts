@@ -15,6 +15,7 @@ export interface UpdateMeRequest {
   dailyProteinGoalG?: number | null;
   diets?: D.DietFlag[];
   allergens?: D.Allergen[];
+  pastBestBeforeGraceDays?: number;           // integer 0–14
   completeOnboarding?: boolean;
 }
 
