@@ -8,7 +8,8 @@ export interface CookPrefs {
   autoRead: boolean;
 }
 
-const KEY = "mise.cook-prefs";
+// v2: alwaysArmed became the default; older saved prefs would silently keep it off.
+const KEY = "mise.cook-prefs.v2";
 export const DEFAULT_PREFS: CookPrefs = { gesture: DEFAULT_GESTURE_CONFIG, showCamera: true, autoRead: false };
 
 export function loadPrefs(): CookPrefs {

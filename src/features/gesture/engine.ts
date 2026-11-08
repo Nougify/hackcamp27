@@ -26,6 +26,9 @@ const MORE_LIGHT_MS = 3000;
 const SCROLL_RELEASE_COOLDOWN_MS = 300;
 // A new pose must persist this long before it counts, so one jittery frame can't break a hold (≈2 frames at 15 fps).
 const POSE_SETTLE_MS = 150;
+// Next/previous poses must be held still: an index finger on a knife spine while chopping moves, and restarts the hold.
+const STILL: Partial<Record<CannedGesture, true>> = { Pointing_Up: true, ILoveYou: true };
+const STILL_MAX_DRIFT = 0.05; // index-tip movement (fraction of frame) allowed during the hold
 
 export class GestureEngine {
   private cfg: GestureConfig;
@@ -35,6 +38,7 @@ export class GestureEngine {
   private poseSince = 0;
   private cand: CannedGesture = 'None'; // raw pose waiting to settle
   private candSince = 0;
+  private anchor: { x: number; y: number } | null = null; // index tip where a STILL hold started
   private fired = false;         // one-shot latch per continuous pose hold (ARM or discrete action)
   private needRelease = false;   // discrete pose action fired; pose must change before re-arming
   private cooldownUntil = 0;
@@ -49,11 +53,6 @@ export class GestureEngine {
     this.cfg = config;
   }
 
-  /** Current debounced pose, for the debug overlay. */
-  get debugPose(): string {
-    return this.pose;
-  }
-
   setConfig(c: GestureConfig): void {
     this.cfg = c;
   }
@@ -65,6 +64,7 @@ export class GestureEngine {
     this.poseSince = 0;
     this.cand = 'None';
     this.candSince = 0;
+    this.anchor = null;
     this.fired = false;
     this.needRelease = false;
     this.cooldownUntil = 0;
@@ -117,8 +117,7 @@ export class GestureEngine {
     if (this.lowSince !== null && now - this.lowSince >= MORE_LIGHT_MS) hint = 'more_light';
     this.hint = hint;
 
-    const raw: CannedGesture =
-      (low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture);
+    const raw: CannedGesture = low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture;
     if (raw !== this.cand) {
       this.cand = raw;
       this.candSince = now;
@@ -135,6 +134,17 @@ export class GestureEngine {
     const pose = this.pose;
     // Debouncing only protects the latch; actions need the pose to be showing right now.
     const steady = raw === pose;
+
+    if (STILL[pose] && steady) {
+      const tip = h.landmarks[8];
+      if (!this.anchor) this.anchor = tip;
+      else if (!this.fired && Math.hypot(tip.x - this.anchor.x, tip.y - this.anchor.y) > STILL_MAX_DRIFT) {
+        this.anchor = tip;
+        this.poseSince = now; // moved: start the hold again
+      }
+    } else if (!STILL[pose]) {
+      this.anchor = null;
+    }
 
     if (!this.isArmed()) {
       if (steady && pose === 'Open_Palm' && !this.fired && now - this.poseSince >= c.armHoldMs) {
@@ -238,6 +248,7 @@ export class GestureEngine {
     this.poseSince = now;
     this.cand = 'None';
     this.candSince = now;
+    this.anchor = null;
   }
 
 }

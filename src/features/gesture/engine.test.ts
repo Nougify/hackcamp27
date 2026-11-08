@@ -72,8 +72,9 @@ class Rig {
   }
 }
 
+// Most tests exercise the palm-to-arm flow, so they opt out of the always-armed default.
 const mk = (over: Partial<typeof DEFAULT_GESTURE_CONFIG> = {}) =>
-  new Rig(new GestureEngine({ ...DEFAULT_GESTURE_CONFIG, ...over }));
+  new Rig(new GestureEngine({ ...DEFAULT_GESTURE_CONFIG, alwaysArmed: false, ...over }));
 const armed = (over: Partial<typeof DEFAULT_GESTURE_CONFIG> = {}) =>
   mk(over).run({ pose: 'Open_Palm', ms: 600 });
 
@@ -269,14 +270,31 @@ describe('next / previous step (built-in Pointing_Up / ILoveYou)', () => {
     expect(r.names()).toEqual(['ARM']);
   });
 
-  it('one jittery frame mid-point does not fire a second step', () => {
-    const r = armed().run({ pose: 'Pointing_Up', ms: 900 }, { pose: 'None', ms: 0 }, { pose: 'Pointing_Up', ms: 3000 });
+
+  it('a moving point (finger on a knife spine while chopping) never fires', () => {
+    const r = armed();
+    for (let i = 0; i < 10; i++) r.run({ pose: 'Pointing_Up', ms: 300, x: 0.4, toX: 0.6 }, { pose: 'Pointing_Up', ms: 300, x: 0.6, toX: 0.4 });
+    expect(r.of('NEXT_STEP')).toHaveLength(0);
+  });
+
+  it('a still point fires even after earlier movement', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 300, x: 0.4, toX: 0.6 }, { pose: 'Pointing_Up', ms: 800, x: 0.6 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
+  });
+
+  it('brief Pointing_Up / ILoveYou frames on the way into a fist do not fire', () => {
+    const r = armed().run({ pose: 'Pointing_Up', ms: 200 }, { pose: 'ILoveYou', ms: 200 }, { pose: 'Closed_Fist', ms: 800 });
+    expect(r.names()).toEqual(['ARM', 'TIMER_TOGGLE']);
   });
 
   it('does nothing while unarmed', () => {
     const r = mk().run({ pose: 'Pointing_Up', ms: 3000 }, { pose: 'ILoveYou', ms: 3000 });
     expect(r.actions).toEqual([]);
+  });
+
+  it('works without arming by default (always armed)', () => {
+    const r = new Rig(new GestureEngine(DEFAULT_GESTURE_CONFIG)).run({ pose: 'Pointing_Up', ms: 800 });
+    expect(r.names()).toEqual(['NEXT_STEP']);
   });
 });
 

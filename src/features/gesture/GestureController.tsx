@@ -43,7 +43,7 @@ const LEGEND = [
   ["✌️", "Victory: read aloud"],
 ];
 
-function chip(h: GestureHud): string {
+function chip(h: GestureHud, alwaysArmed: boolean): string {
   if (h.error) return ERRORS[h.error];
   switch (h.state) {
     case "off":
@@ -54,7 +54,7 @@ function chip(h: GestureHud): string {
     case "error":
       return ERRORS.ModelLoadFailed;
     case "no_hand":
-      return "Show your palm to start";
+      return alwaysArmed ? "Show your hand" : "Show your palm to start";
     case "hand_seen":
       return h.pose === "Open_Palm" ? "Hold your palm…" : "Show your palm to start";
     case "armed":
@@ -90,7 +90,6 @@ export default function GestureController({
   const [hud, setHud] = useState<GestureHud | null>(null);
   const [flash, setFlash] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const [debugPose, setDebugPose] = useState("");
   // Latest props for the long-lived action callback.
   const latest = useRef({ controller, announce, paused });
   useEffect(() => {
@@ -104,10 +103,7 @@ export default function GestureController({
     source.current = src;
     const offHud = src.onHud((h) => {
       setHud(h);
-      if (DEBUG) {
-        drawLandmarks(canvas.current, src.landmarks);
-        setDebugPose(src.debugPose);
-      }
+      if (DEBUG) drawLandmarks(canvas.current, src.landmarks);
     });
     const offAction = src.onAction((a) => {
       const { controller: c, announce: say, paused: isPaused } = latest.current;
@@ -184,13 +180,13 @@ export default function GestureController({
           </svg>
           {/* Not a live region: it changes up to 10×/s. Fired actions are announced via `announce`. */}
           <p className="font-semibold leading-tight">
-            {hud ? chip(hud) : "Starting camera…"}
+            {hud ? chip(hud, config.alwaysArmed) : "Starting camera…"}
           </p>
         </div>
 
         {hud?.hint === "move_closer" && <p className="mt-1 text-warn">Move closer</p>}
         {hud?.hint === "more_light" && <p className="mt-1 text-warn">Turn on a light</p>}
-        {DEBUG && hud && <p className="mt-1 font-mono text-xs text-muted">{hud.fps} fps · {debugPose}</p>}
+        {DEBUG && hud && <p className="mt-1 font-mono text-xs text-muted">{hud.fps} fps · {hud.pose}</p>}
 
         {failed ? (
           hud?.error === "NotAllowedError" && (
@@ -200,7 +196,7 @@ export default function GestureController({
           )
         ) : (
           <ul className="mt-2 grid gap-0.5 text-xs text-muted">
-            {LEGEND.map(([icon, text]) => (
+            {LEGEND.filter(([icon]) => !(config.alwaysArmed && icon === "✋")).map(([icon, text]) => (
               <li key={text}>
                 <span aria-hidden>{icon}</span> {text}
               </li>

@@ -25,10 +25,6 @@ export class MediaPipeGestureSource implements GestureSource {
   private lastHandAt = 0;
   private lastHudAt = 0;
   private frames: number[] = [];
-  /** Engine's current pose, for the debug overlay. */
-  get debugPose() {
-    return this.engine.debugPose;
-  }
   /** Latest landmarks, for the NEXT_PUBLIC_GESTURE_DEBUG overlay. */
   landmarks: Array<{ x: number; y: number }> | null = null;
 
