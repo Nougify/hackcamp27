@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6XKKC6Z4BFXGR7VXQJ8YT77",
+  "strategy": "manual-commit",
+  "branch": "johnny/nutrition",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "Caddyfile",
+    "Caddyfile.bak",
+    "deploy.sh",
+    "docker-compose.yml",
+    "src/app/api/cook/sessions/[id]/finish-preview/route.ts",
+    "src/app/api/recipes/[id]/adapt/route.ts",
+    "src/app/api/recipes/[id]/route.ts",
+    "src/app/api/recipes/search/route.ts",
+    "src/app/page.tsx",
+    "src/lib/env.test.ts",
+    "src/server/cook/finish.ts",
+    "src/server/cook/sessions.ts",
+    "src/server/nutrition/daily.test.ts",
+    "src/server/pantry/page-guard.test.ts",
+    "src/server/pantry/profile.test.ts",
+    "src/server/pantry/validation.test.ts",
+    "src/server/recipes/pantry-view.test.ts",
+    "src/server/recipes/pantry-view.ts",
+    "src/server/vision/upload.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 4,
+    "cache_creation_tokens": 10334,
+    "cache_read_tokens": 482948,
+    "output_tokens": 1918,
+    "api_call_count": 2
+  },
+  "redaction": {
+    "replacements": 7,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 5,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
