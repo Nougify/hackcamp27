@@ -34,14 +34,13 @@ const MAX_URLS = 12;
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
+    const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) return jsonErrorFromZod(parsed.error); // bad bodies don't spend rate-limit tokens
+    const body = parsed.data;
     const limit = checkRateLimit(user.id, 'recipes/search');
     if (!limit.ok) throw new RateLimitedError('Too many recipe searches', limit.retryAfterMs);
 
-    const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return jsonErrorFromZod(parsed.error);
-    const body = parsed.data;
-
-    return ndjsonResponse<RecipeSearchEvent>(async (write) => {
+    return ndjsonResponse<RecipeSearchEvent>(async (write, signal) => {
       write({ type: 'status', stage: 'searching', message: 'Finding recipes for your expiring ingredients…' });
 
       const profile = await getProfileFilters(user.id);
@@ -51,10 +50,9 @@ export async function POST(req: Request) {
 
       const mustUseIds =
         body.mustUsePantryItemIds ?? pantry.filter((p) => p.daysToExpiry != null && p.daysToExpiry <= 3).map((p) => p.id);
-      const mustUse = pantry.filter((p) => mustUseIds.includes(p.id));
       const ctx = buildDiscoveryContext(pantry, { diets, allergens }, body.freeText);
       if (body.mustUsePantryItemIds) {
-        ctx.expiring = mustUse;
+        ctx.expiring = pantry.filter((p) => mustUseIds.includes(p.id));
         ctx.alsoAvailable = pantry.filter((p) => !mustUseIds.includes(p.id));
       }
 
@@ -65,7 +63,7 @@ export async function POST(req: Request) {
         freeText: body.freeText,
       });
       let urls = await getDiscoveryCache(user.id, cacheKey);
-      let cached = urls != null;
+      const cached = urls != null;
       if (!urls) {
         const discovered = await discoverRecipeUrls(ctx);
         urls = collectDiscoveryUrls(discovered.result).slice(0, MAX_URLS);
@@ -73,8 +71,6 @@ export async function POST(req: Request) {
         if (discovered.result.searchEntryPointHtml) {
           write({ type: 'search_suggestions', html: discovered.result.searchEntryPointHtml });
         }
-      } else {
-        cached = true;
       }
 
       if (urls.length === 0) {
@@ -86,9 +82,10 @@ export async function POST(req: Request) {
 
       const seenCanonical = new Set<string>();
       let shown = 0;
+      let reserved = 0; // result slots claimed synchronously, so parallel workers can't overshoot maxResults
       let excludedCount = 0;
       let next = 0;
-      const stop = () => shown >= body.maxResults;
+      const stop = () => reserved >= body.maxResults || signal.aborted;
 
       const worker = async () => {
         while (next < urls.length && !stop()) {
@@ -114,36 +111,43 @@ export async function POST(req: Request) {
               continue;
             }
             if (stop()) return;
-            const persisted = await persistOriginal(user.id, extracted, outcome.ingredients);
-            const [score] = computeScores(
-              [
-                {
-                  ingredients: outcome.ingredients,
-                  matches: outcome.matches,
-                  proteinPerServingG: outcome.nutrition.perServing.proteinG,
+            reserved++; // claim the slot before awaiting
+            let emitted = false;
+            try {
+              const persisted = await persistOriginal(user.id, extracted, outcome.ingredients);
+              const [score] = computeScores(
+                [
+                  {
+                    ingredients: outcome.ingredients,
+                    matches: outcome.matches,
+                    proteinPerServingG: outcome.nutrition.perServing.proteinG,
+                  },
+                ],
+                { highProtein: diets.includes('high_protein') },
+              );
+              const candidate: RecipeCandidate = {
+                recipeId: persisted.recipeId,
+                title: extracted.title,
+                source: {
+                  url: extracted.canonicalUrl,
+                  siteName: extracted.siteName,
+                  author: extracted.author,
+                  retrievedAt: new Date().toISOString(),
+                  extractionMethod: extracted.extractionMethod,
                 },
-              ],
-              { highProtein: diets.includes('high_protein') },
-            );
-            const candidate: RecipeCandidate = {
-              recipeId: persisted.recipeId,
-              title: extracted.title,
-              source: {
-                url: extracted.canonicalUrl,
-                siteName: extracted.siteName,
-                author: extracted.author,
-                retrievedAt: new Date().toISOString(),
-                extractionMethod: extracted.extractionMethod,
-              },
-              totalMin: extracted.times.totalMin,
-              servings: extracted.servings,
-              score: score!,
-              usesExpiring: outcome.usesExpiring,
-              matches: outcome.matches,
-              nutrition: outcome.nutrition,
-            };
-            shown++;
-            write({ type: 'candidate', candidate });
+                totalMin: extracted.times.totalMin,
+                servings: extracted.servings,
+                score: score!,
+                usesExpiring: outcome.usesExpiring,
+                matches: outcome.matches,
+                nutrition: outcome.nutrition,
+              };
+              shown++;
+              emitted = true;
+              write({ type: 'candidate', candidate });
+            } finally {
+              if (!emitted) reserved--; // persist failed: free the slot for another URL
+            }
           } catch (err) {
             excludedCount++;
             if (err instanceof SafeFetchError && err.code === 'blocked_url') {

@@ -31,13 +31,34 @@ const DEV_USER: AppUser = {
   tz: 'America/Vancouver',
 };
 
+/** With a database but no Auth0, make sure the demo user's row exists (FKs on recipes, sessions, …). Once per process. */
+let devUserSeeded: Promise<void> | null = null;
+function ensureDevUser(): Promise<void> {
+  if (!process.env.DATABASE_URL) return Promise.resolve(); // no DB: fixture-only local dev
+  devUserSeeded ??= sql`
+    INSERT INTO users (id, auth0_sub, email, display_name, tz)
+    VALUES (${DEV_USER.id}, ${DEV_USER.auth0Sub}, ${DEV_USER.email}, ${DEV_USER.displayName}, ${DEV_USER.tz})
+    ON CONFLICT DO NOTHING
+  `.then(
+    () => undefined,
+    (err) => {
+      devUserSeeded = null; // retry on the next request
+      throw err;
+    },
+  );
+  return devUserSeeded;
+}
+
 /**
  * First line of every route handler (SPEC.md §7). Upserts the Auth0 session's
  * `sub` into `users` (never merges by email — SPEC.md §5.2) and returns our
  * own user row. Throws UnauthorizedError, caught by `handleRouteError`.
  */
 export async function requireUser(): Promise<AppUser> {
-  if (authDisabled) return DEV_USER;
+  if (authDisabled) {
+    await ensureDevUser();
+    return DEV_USER;
+  }
   const session = await auth0.getSession();
   if (!session) throw new UnauthorizedError('No active session');
 

@@ -55,21 +55,36 @@ export function handleRouteError(err: unknown): NextResponse<ApiError> {
  * writing the matching event, so clients see progress instead of one
  * buffered burst at the end.
  */
-export function ndjsonResponse<T>(producer: (write: (event: T) => void) => Promise<void>): Response {
+export function ndjsonResponse<T>(
+  producer: (write: (event: T) => void, signal: AbortSignal) => Promise<void>,
+): Response {
   const encoder = new TextEncoder();
+  // Aborted when the client goes away (e.g. a new search replaces this one): writes become
+  // no-ops and producers should stop starting new upstream work.
+  const abort = new AbortController();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const write = (event: T) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const write = (event: T) => {
+        if (abort.signal.aborted) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        } catch {
+          abort.abort();
+        }
+      };
       try {
-        await producer(write);
+        await producer(write, abort.signal);
       } catch (err) {
         write({
           type: 'error',
           error: { code: 'INTERNAL', message: err instanceof Error ? err.message : 'Unknown error' },
         } as T);
       } finally {
-        controller.close();
+        if (!abort.signal.aborted) controller.close();
       }
+    },
+    cancel() {
+      abort.abort();
     },
   });
   return new Response(stream, {

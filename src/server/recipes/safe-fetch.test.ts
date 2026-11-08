@@ -6,6 +6,7 @@ import {
   assertUrlAllowed,
   checkUrlFormat,
   isBlockedIp,
+  pinnedLookup,
   safeFetchHtml,
 } from './safe-fetch';
 
@@ -45,6 +46,30 @@ describe('isBlockedIp', () => {
     '2001:db8::1',
   ])('allows %s', (ip) => {
     expect(isBlockedIp(ip)).toBe(false);
+  });
+});
+
+describe('isBlockedIp: extra reserved ranges', () => {
+  it.each(['fe90::1', 'febf::1', '100.64.0.1', '100.127.255.254', '198.18.0.1', '224.0.0.1', '255.255.255.255'])(
+    'blocks %s',
+    (ip) => expect(isBlockedIp(ip)).toBe(true),
+  );
+  it.each(['100.63.255.255', '100.128.0.1', '8.8.8.8'])('allows %s', (ip) =>
+    expect(isBlockedIp(ip)).toBe(false),
+  );
+});
+
+describe('pinnedLookup (DNS rebinding guard)', () => {
+  it('answers the validated address for any hostname, in both callback forms', () => {
+    const lookup = pinnedLookup('93.184.216.34', 4);
+    lookup('evil.example', { all: true }, (err, addrs) => {
+      expect(err).toBeNull();
+      expect(addrs).toEqual([{ address: '93.184.216.34', family: 4 }]);
+    });
+    lookup('evil.example', {}, (err, addr, family) => {
+      expect(err).toBeNull();
+      expect([addr, family]).toEqual(['93.184.216.34', 4]);
+    });
   });
 });
 
