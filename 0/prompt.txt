@@ -1,0 +1,5 @@
+The current system to match recipe ingredients to pantry items is too strict. What exactly is the algorithm currently used?
+
+---
+
+Make a backend change that normalizes pantry items using the Gemini API. Before an ingredient is marked as "missing," normalize the ingredient name using the API aswell and check if it matches any items in the pantry. For example, one recipe that calls for "3/4 cup any flavor jam" should be able to match with a pantry item, "Strawberry Jam."
