@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import type { RecipeSearchEvent, RecipeSearchRequest } from '@/contracts/api';
 import type { RecipeCandidate } from '@/contracts/domain';
-import { Button, Card } from '@/components/ui/primitives';
+import { Button, Card } from '@/components/ui';
 import { RecipeCard } from './RecipeCard';
 
 interface SearchState {
@@ -124,7 +124,7 @@ export function SearchStream() {
           placeholder="quick dinner… (optional)"
           maxLength={100}
           aria-label="Recipe theme"
-          className="min-h-14 flex-1 rounded-xl border bg-surface px-4 text-base"
+          className="min-h-14 flex-1 rounded-xl border border-line bg-surface px-4 text-base"
         />
         <Button type="submit" disabled={state.running}>
           {state.running ? 'Searching…' : 'Find recipes'}
@@ -132,7 +132,7 @@ export function SearchStream() {
       </form>
 
       {state.status && (
-        <p role="status" className="mt-4 text-sm text-text-muted">
+        <p role="status" className="mt-4 text-sm text-muted">
           {state.status}
         </p>
       )}
@@ -150,7 +150,7 @@ export function SearchStream() {
           title="Related searches"
           srcDoc={state.suggestionsHtml}
           sandbox="allow-popups allow-popups-to-escape-sandbox"
-          className="mt-4 h-24 w-full rounded-xl border bg-surface"
+          className="mt-4 h-24 w-full rounded-xl border border-line bg-surface"
         />
       )}
 
@@ -163,11 +163,11 @@ export function SearchStream() {
       {state.done && sorted.length === 0 && !state.error && (
         <Card className="mt-4">
           <p className="font-semibold">No recipes matched your pantry.</p>
-          <p className="mt-1 text-sm text-text-muted">Try different ingredients or add more to your pantry.</p>
+          <p className="mt-1 text-sm text-muted">Try different ingredients or add more to your pantry.</p>
         </Card>
       )}
       {state.done && state.excludedCount > 0 && (
-        <p className="mt-3 text-xs text-text-muted">
+        <p className="mt-3 text-xs text-muted">
           {state.excludedCount} result{state.excludedCount === 1 ? '' : 's'} hidden (diet filters, unreadable pages, or duplicates).
         </p>
       )}

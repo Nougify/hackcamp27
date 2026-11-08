@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/current-user';
 import { handleRouteError, jsonOk } from '@/lib/http';
-import { fixtureMealLogs } from '@/contracts/fixtures/meals';
+import { mealsFixture } from '@/contracts/fixtures';
 
 export const runtime = 'nodejs';
 
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     await requireUser();
-    return jsonOk({ meals: fixtureMealLogs });
+    return jsonOk({ meals: mealsFixture });
   } catch (err) {
     return handleRouteError(err);
   }
@@ -17,7 +17,7 @@ export async function GET() {
 export async function POST() {
   try {
     await requireUser();
-    return jsonOk(fixtureMealLogs[0]);
+    return jsonOk(mealsFixture[0]);
   } catch (err) {
     return handleRouteError(err);
   }

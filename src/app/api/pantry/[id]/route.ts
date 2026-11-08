@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/current-user';
 import { handleRouteError, jsonOk } from '@/lib/http';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 
 export const runtime = 'nodejs';
 
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function PATCH() {
   try {
     await requireUser();
-    return jsonOk(fixturePantry[0]);
+    return jsonOk(pantryFixture[0]);
   } catch (err) {
     return handleRouteError(err);
   }

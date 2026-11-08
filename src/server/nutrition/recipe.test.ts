@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 import type { PantryItem, PantryMatch, RecipeIngredient } from '@/contracts/domain';
 import { estimateRecipeNutrition, suggestLogPerServing } from './recipe';
 
@@ -98,7 +98,7 @@ describe('estimateRecipeNutrition', () => {
   });
 
   it('assumes density 1.0 for volume with a flag', () => {
-    const milk = fixturePantry.find((p) => p.normalizedName === 'milk')!;
+    const milk = pantryFixture.find((p) => p.normalizedName === 'milk')!;
     const noDensity: PantryItem = { ...milk, densityGPerMl: null };
     const est = estimateRecipeNutrition({
       ingredients: [ing({ raw: '1 cup milk', normalizedName: 'milk', qty: 1, unit: 'cup', dim: 'volume', qtyBase: 236.6 })],
@@ -111,8 +111,8 @@ describe('estimateRecipeNutrition', () => {
   });
 
   it('skips count items without gramsPerUnit and flags them', () => {
-    const egg = fixturePantry.find((p) => p.normalizedName === 'egg')!;
-    const noBridge: PantryItem = { ...egg, gramsPerUnit: null };
+    const egg = pantryFixture.find((p) => p.normalizedName === 'egg')!;
+    const noBridge: PantryItem = { ...egg, gramsPerUnit: null, nutritionBasis: 'unit' };
     const est = estimateRecipeNutrition({
       ingredients: [ing({ raw: '100 g egg', normalizedName: 'egg', qty: 100, unit: 'g', dim: 'mass', qtyBase: 100 })],
       matches: [have(0, noBridge)],

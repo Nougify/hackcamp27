@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 import type { ExtractedRecipe } from './extract';
 import { processExtracted } from './pipeline';
 
@@ -24,18 +24,18 @@ function extracted(partial: Partial<ExtractedRecipe> = {}): ExtractedRecipe {
 
 describe('processExtracted', () => {
   it('builds a candidate from a clean extraction (F6 AC1 shape)', async () => {
-    const out = await processExtracted(extracted(), { pantry: fixturePantry, diets: [], allergens: [] });
+    const out = await processExtracted(extracted(), { pantry: pantryFixture, diets: [], allergens: [] });
     expect(out.kind).toBe('candidate');
     if (out.kind !== 'candidate') return;
     expect(out.matches).toHaveLength(3);
-    expect(out.usesExpiring.map((u) => u.name)).toContain('Spinach, baby');
+    expect(out.usesExpiring.map((u) => u.name)).toContain('Baby Spinach');
     expect(out.nutrition.basedOn).toBeGreaterThan(0);
     expect(out.steps).toHaveLength(2);
   });
 
   it('excludes with reason allergen when a line violates an allergy', async () => {
     const out = await processExtracted(extracted({ ingredients: ['200 g spinach', '2 tbsp peanut butter'] }), {
-      pantry: fixturePantry,
+      pantry: pantryFixture,
       diets: [],
       allergens: ['peanut'],
     });
@@ -44,7 +44,7 @@ describe('processExtracted', () => {
 
   it('excludes with reason diet_violation for diet-only hits', async () => {
     const out = await processExtracted(extracted({ ingredients: ['500 g chicken thigh'] }), {
-      pantry: fixturePantry,
+      pantry: pantryFixture,
       diets: ['vegetarian'],
       allergens: [],
     });
@@ -52,7 +52,7 @@ describe('processExtracted', () => {
   });
 
   it('uses the injected normalizer for failed lines and survives its errors', async () => {
-    const ok = await processExtracted(extracted({ ingredients: ['   '] }), { pantry: fixturePantry, diets: [], allergens: [] }, {
+    const ok = await processExtracted(extracted({ ingredients: ['   '] }), { pantry: pantryFixture, diets: [], allergens: [] }, {
       normalize: async (raws) =>
         new Map(raws.map((r) => [r, { raw: r, qty: 1, unit: 'pcs' as const, name: 'mystery', dim: 'count' as const }])),
     });
@@ -60,7 +60,7 @@ describe('processExtracted', () => {
 
     const failed = await processExtracted(
       extracted({ ingredients: ['   '] }),
-      { pantry: fixturePantry, diets: [], allergens: [] },
+      { pantry: pantryFixture, diets: [], allergens: [] },
       {
         normalize: async () => {
           throw new Error('gemini down');

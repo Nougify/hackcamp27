@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 import type { PantryItem, RecipeIngredient } from '@/contracts/domain';
 import { matchIngredients } from '@/server/recipes/match';
 import { planDeductions } from './plan';
@@ -18,7 +18,7 @@ function ing(partial: Partial<RecipeIngredient> & { raw: string }): RecipeIngred
   };
 }
 
-const pantryById = new Map(fixturePantry.map((p) => [p.id, p]));
+const pantryById = new Map(pantryFixture.map((p) => [p.id, p]));
 
 describe('planDeductions', () => {
   it('scales by servingsCooked / variant.servings', () => {
@@ -27,7 +27,7 @@ describe('planDeductions', () => {
     ];
     const lines = planDeductions({
       ingredients,
-      matches: matchIngredients(ingredients, fixturePantry),
+      matches: matchIngredients(ingredients, pantryFixture),
       pantryById,
       servingsCooked: 4,
       variantServings: 2,
@@ -42,7 +42,7 @@ describe('planDeductions', () => {
     ];
     const lines = planDeductions({
       ingredients,
-      matches: matchIngredients(ingredients, fixturePantry),
+      matches: matchIngredients(ingredients, pantryFixture),
       pantryById,
       servingsCooked: 1,
       variantServings: 1,
@@ -51,7 +51,7 @@ describe('planDeductions', () => {
   });
 
   it('reports unconvertible with no bridge (F14 AC4)', () => {
-    const noDensity: PantryItem = { ...fixturePantry[0]!, densityGPerMl: null, dim: 'mass' };
+    const noDensity: PantryItem = { ...pantryFixture[0]!, densityGPerMl: null, dim: 'mass' };
     const byId = new Map([[noDensity.id, noDensity]]);
     const ingredients = [
       ing({ raw: '2 cups spinach', normalizedName: 'spinach', qty: 2, unit: 'cup', dim: 'volume', qtyBase: 473 }),
@@ -75,7 +75,7 @@ describe('planDeductions', () => {
     ];
     const lines = planDeductions({
       ingredients,
-      matches: matchIngredients(ingredients, fixturePantry),
+      matches: matchIngredients(ingredients, pantryFixture),
       pantryById,
       servingsCooked: 1,
       variantServings: 1,
@@ -90,11 +90,11 @@ describe('planDeductions', () => {
     ];
     const lines = planDeductions({
       ingredients,
-      matches: matchIngredients(ingredients, fixturePantry),
+      matches: matchIngredients(ingredients, pantryFixture),
       pantryById,
       servingsCooked: 1,
       variantServings: 1,
     });
-    expect(lines[0]?.display).toBe('Spinach, baby: 150 g of 200 g → 50 g left');
+    expect(lines[0]?.display).toBe('Baby Spinach: 150 g of 200 g → 50 g left');
   });
 });

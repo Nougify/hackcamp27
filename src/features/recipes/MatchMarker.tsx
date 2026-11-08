@@ -1,9 +1,9 @@
 import type { MatchStatus } from '@/contracts/domain';
-import { Badge } from '@/components/ui/primitives';
+import { Badge } from '@/components/ui';
 
-const MARKERS: Record<MatchStatus, { label: string; tone: 'good' | 'bad' | 'neutral' | 'warn' }> = {
-  have: { label: 'Have', tone: 'good' },
-  missing: { label: 'Missing', tone: 'bad' },
+const MARKERS: Record<MatchStatus, { label: string; tone: 'accent' | 'danger' | 'neutral' | 'warn' }> = {
+  have: { label: 'Have', tone: 'accent' },
+  missing: { label: 'Missing', tone: 'danger' },
   staple: { label: 'Staple', tone: 'neutral' },
   insufficient: { label: 'Low', tone: 'warn' },
 };

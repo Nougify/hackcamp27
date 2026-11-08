@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { OriginalRecipe, PantryMatch } from '@/contracts/domain';
-import { Button, Card } from '@/components/ui/primitives';
+import { Button, Card } from '@/components/ui';
 import { MatchMarker } from './MatchMarker';
 
 export function OriginalCard({
@@ -55,7 +55,7 @@ export function OriginalCard({
       >
         View original
       </a>
-      <h2 className="mt-3 text-sm font-semibold text-text-muted">Ingredients</h2>
+      <h2 className="mt-3 text-sm font-semibold text-muted">Ingredients</h2>
       <ul className="mt-1 flex flex-col gap-2">
         {recipe.ingredients.map((ing, i) => (
           <li key={i} className="flex items-start justify-between gap-3">
@@ -64,7 +64,7 @@ export function OriginalCard({
           </li>
         ))}
       </ul>
-      <h2 className="mt-4 text-sm font-semibold text-text-muted">Steps</h2>
+      <h2 className="mt-4 text-sm font-semibold text-muted">Steps</h2>
       <ol className="mt-1 flex list-decimal flex-col gap-2 pl-5">
         {recipe.steps.map((step) => (
           <li key={step.index}>{step.text}</li>

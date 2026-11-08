@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
-import { fixtureOriginalRecipe2 } from '@/contracts/fixtures/recipes';
+import { pantryFixture } from '@/contracts/fixtures';
+import { originalRecipesFixture } from '@/contracts/fixtures';
 import type { AdaptationOutput } from '@/lib/gemini/schemas';
 import { UnprocessableError } from '@/lib/errors';
 import { buildAdaptedRecipe, requestAdaptation, validateAdaptation, type AdaptValidationContext } from './adapt';
 
-const yogurt = fixturePantry.find((p) => p.normalizedName === 'greek yogurt')!;
+const yogurt = pantryFixture.find((p) => p.normalizedName === 'greek yogurt')!;
 
 function ctx(over: Partial<AdaptValidationContext> = {}): AdaptValidationContext {
   return {
     missingRaws: ['2 cups buttermilk'],
-    pantryById: new Map(fixturePantry.map((p) => [p.id, p])),
+    pantryById: new Map(pantryFixture.map((p) => [p.id, p])),
     stepCount: 3,
     diets: [],
     allergens: [],
@@ -86,7 +86,7 @@ describe('requestAdaptation', () => {
       substitutions: [{ ...output().substitutions[0]!, pantryItemId: 'nope' }],
     });
     await expect(
-      requestAdaptation(fixtureOriginalRecipe2, ['2 cups buttermilk'], fixturePantry, { diets: [], allergens: [] }, {
+      requestAdaptation(originalRecipesFixture[1], ['2 cups buttermilk'], pantryFixture, { diets: [], allergens: [] }, {
         generate: async () => {
           calls++;
           return { data: bad, model: 'test-model' };
@@ -102,9 +102,9 @@ describe('requestAdaptation', () => {
       substitutions: [{ ...output().substitutions[0]!, pantryItemId: 'nope' }],
     });
     const built = await requestAdaptation(
-      fixtureOriginalRecipe2,
+      originalRecipesFixture[1],
       ['2 cups buttermilk'],
-      fixturePantry,
+      pantryFixture,
       { diets: [], allergens: [] },
       {
         generate: async () => {
@@ -120,13 +120,13 @@ describe('requestAdaptation', () => {
 
 describe('buildAdaptedRecipe', () => {
   it('applies step changes, marks changed flags, and keeps the original intact', () => {
-    const before = JSON.stringify(fixtureOriginalRecipe2);
-    const built = buildAdaptedRecipe(fixtureOriginalRecipe2, output(), 'test-model');
+    const before = JSON.stringify(originalRecipesFixture[1]);
+    const built = buildAdaptedRecipe(originalRecipesFixture[1], output(), 'test-model');
     expect(built.steps[0]).toMatchObject({ text: 'Whisk the eggs and thinned yogurt.', changed: true });
     expect(built.steps[1]?.changed).toBe(false);
     expect(built.ingredients[0]).toMatchObject({ changed: true });
     expect(built.ingredients[0]?.parsed.normalizedName).toBeTruthy();
     expect(built.model).toBe('test-model');
-    expect(JSON.stringify(fixtureOriginalRecipe2)).toBe(before);
+    expect(JSON.stringify(originalRecipesFixture[1])).toBe(before);
   });
 });

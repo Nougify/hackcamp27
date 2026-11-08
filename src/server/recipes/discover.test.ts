@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 import {
   buildDiscoveryContext,
   buildDiscoveryPrompt,
@@ -7,6 +7,11 @@ import {
   isStapleName,
 } from './discover';
 import { daysToExpiryInTz } from './pantry-view';
+
+// What listPantryForMatching hands discovery: expired rows dropped, soonest expiry first.
+const matchingPantry = pantryFixture
+  .filter((p) => p.daysToExpiry == null || p.daysToExpiry >= 0)
+  .sort((a, b) => (a.daysToExpiry ?? 9999) - (b.daysToExpiry ?? 9999));
 
 describe('isStapleName', () => {
   it.each([['salt', true], ['olive oil', true], ['black pepper', true], ['water', true], ['spinach', false], ['oily fish', false]])(
@@ -19,8 +24,8 @@ describe('isStapleName', () => {
 
 describe('buildDiscoveryContext', () => {
   it('splits expiring (≤3d) from the rest, soonest first', () => {
-    const ctx = buildDiscoveryContext(fixturePantry, { diets: [], allergens: [] });
-    expect(ctx.expiring.map((p) => p.normalizedName)).toEqual(['spinach', 'chicken thigh', 'greek yogurt']);
+    const ctx = buildDiscoveryContext(matchingPantry, { diets: [], allergens: [] });
+    expect(ctx.expiring.map((p) => p.normalizedName)).toEqual(['chicken thigh', 'spinach', 'milk']);
     expect(ctx.alsoAvailable.length).toBeGreaterThan(0);
     expect(ctx.expiring.every((p) => (p.daysToExpiry ?? 99) <= 3)).toBe(true);
   });
@@ -28,16 +33,16 @@ describe('buildDiscoveryContext', () => {
 
 describe('buildDiscoveryPrompt', () => {
   it('includes expiring items first, diets, allergens and theme', () => {
-    const ctx = buildDiscoveryContext(fixturePantry, { diets: ['gluten_free'], allergens: ['peanut'] }, 'quick dinner');
+    const ctx = buildDiscoveryContext(matchingPantry, { diets: ['gluten_free'], allergens: ['peanut'] }, 'quick dinner');
     const prompt = buildDiscoveryPrompt(ctx);
-    expect(prompt).toContain('spinach (1d)');
+    expect(prompt).toContain('chicken thigh (1d)');
     expect(prompt).toContain('DIET: gluten_free. EXCLUDE ALLERGENS: peanut.');
     expect(prompt).toContain('THEME: quick dinner');
     expect(prompt).toContain('Do not invent URLs.');
   });
 
   it('caps free text at 100 chars', () => {
-    const ctx = buildDiscoveryContext(fixturePantry, { diets: [], allergens: [] }, 'x'.repeat(200));
+    const ctx = buildDiscoveryContext(matchingPantry, { diets: [], allergens: [] }, 'x'.repeat(200));
     expect(buildDiscoveryPrompt(ctx)).toContain('x'.repeat(100));
     expect(buildDiscoveryPrompt(ctx)).not.toContain('x'.repeat(101));
   });

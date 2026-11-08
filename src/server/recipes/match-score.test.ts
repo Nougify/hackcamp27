@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixturePantry } from '@/contracts/fixtures/pantry';
+import { pantryFixture } from '@/contracts/fixtures';
 import type { PantryItem, RecipeIngredient } from '@/contracts/domain';
 import { matchIngredients } from './match';
 import { computeScores } from './score';
@@ -20,41 +20,41 @@ function ing(partial: Partial<RecipeIngredient> & { raw: string }): RecipeIngred
 
 describe('matchIngredients', () => {
   it('matches exact normalized names', () => {
-    const [m] = matchIngredients([ing({ raw: 'spinach', normalizedName: 'spinach' })], fixturePantry);
-    expect(m).toMatchObject({ status: 'have', pantryItemName: 'Spinach, baby', daysToExpiry: 1 });
+    const [m] = matchIngredients([ing({ raw: 'spinach', normalizedName: 'spinach' })], pantryFixture);
+    expect(m).toMatchObject({ status: 'have', pantryItemName: 'Baby Spinach', daysToExpiry: 2 });
   });
 
   it('matches through the synonym map', () => {
     const [m] = matchIngredients([ing({ raw: 'scallions', normalizedName: 'scallion' })], [
-      { ...fixturePantry[4]!, normalizedName: 'green onion', name: 'Green onions' },
+      { ...pantryFixture[4]!, normalizedName: 'green onion', name: 'Green onions' },
     ]);
     expect(m?.status).toBe('have');
   });
 
   it('matches token subsets ("chicken thigh" ⊂ "boneless chicken thighs")', () => {
     const [m] = matchIngredients([ing({ raw: 'chicken thigh', normalizedName: 'chicken thigh' })], [
-      { ...fixturePantry[1]!, normalizedName: 'boneless chicken thigh' },
+      { ...pantryFixture[1]!, normalizedName: 'boneless chicken thigh' },
     ]);
     expect(m?.status).toBe('have');
   });
 
   it('rejects single-token subset false positives ("rice" vs "rice vinegar")', () => {
     const [m] = matchIngredients([ing({ raw: 'rice', normalizedName: 'rice' })], [
-      { ...fixturePantry[3]!, normalizedName: 'rice vinegar', name: 'Rice vinegar' },
+      { ...pantryFixture[3]!, normalizedName: 'rice vinegar', name: 'Rice vinegar' },
     ]);
     expect(m?.status).toBe('missing');
   });
 
   it('breaks ties by soonest expiry (FEFO)', () => {
-    const a: PantryItem = { ...fixturePantry[0]!, id: 'a', daysToExpiry: 5, expiryDate: '2099-01-01' };
-    const b: PantryItem = { ...fixturePantry[0]!, id: 'b', daysToExpiry: 1, expiryDate: '2099-01-01' };
+    const a: PantryItem = { ...pantryFixture[0]!, id: 'a', daysToExpiry: 5, expiryDate: '2099-01-01' };
+    const b: PantryItem = { ...pantryFixture[0]!, id: 'b', daysToExpiry: 1, expiryDate: '2099-01-01' };
     const [m] = matchIngredients([ing({ raw: 'spinach', normalizedName: 'spinach' })], [a, b]);
     expect(m?.pantryItemId).toBe('b');
   });
 
   it('excludes expired and empty rows', () => {
-    const expired: PantryItem = { ...fixturePantry[0]!, daysToExpiry: -2 };
-    const empty: PantryItem = { ...fixturePantry[0]!, quantityBase: 0 };
+    const expired: PantryItem = { ...pantryFixture[0]!, daysToExpiry: -2 };
+    const empty: PantryItem = { ...pantryFixture[0]!, quantityBase: 0 };
     const [m1] = matchIngredients([ing({ raw: 'spinach', normalizedName: 'spinach' })], [expired]);
     const [m2] = matchIngredients([ing({ raw: 'spinach', normalizedName: 'spinach' })], [empty]);
     expect(m1?.status).toBe('missing');
@@ -69,23 +69,23 @@ describe('matchIngredients', () => {
   it('reports insufficient when the pantry holds less than required', () => {
     const [m] = matchIngredients(
       [ing({ raw: '500 g spinach', normalizedName: 'spinach', qty: 500, unit: 'g', dim: 'mass', qtyBase: 500 })],
-      fixturePantry, // spinach: 200 g
+      pantryFixture, // spinach: 200 g
     );
-    expect(m).toMatchObject({ status: 'insufficient', daysToExpiry: 1 });
+    expect(m).toMatchObject({ status: 'insufficient', daysToExpiry: 2 });
   });
 
   it('compares across dimensions via bridges', () => {
     // 3 lemons ≈ 300 g; recipe needs 350 g of lemon → insufficient.
     const [m] = matchIngredients(
       [ing({ raw: '350 g lemon', normalizedName: 'lemon', qty: 350, unit: 'g', dim: 'mass', qtyBase: 350 })],
-      fixturePantry,
+      pantryFixture,
     );
     expect(m?.status).toBe('insufficient');
   });
 
   it('treats uncomparable matches as have (planner flags them)', () => {
     // Lemon in cups vs pantry in count with no density → can't compare.
-    const noBridge: PantryItem = { ...fixturePantry[7]!, gramsPerUnit: null };
+    const noBridge: PantryItem = { ...pantryFixture.find((p) => p.normalizedName === 'lemon')!, gramsPerUnit: null };
     const [m] = matchIngredients(
       [ing({ raw: '2 cups lemon', normalizedName: 'lemon', qty: 2, unit: 'cup', dim: 'volume', qtyBase: 473 })],
       [noBridge],

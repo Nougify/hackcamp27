@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { AdaptResponse, RecipeDetailResponse } from '@/contracts/api';
-import { Badge, Button, Card } from '@/components/ui/primitives';
+import { Badge, Button, Card } from '@/components/ui';
 import { AdaptedCard } from './AdaptedCard';
 import { OriginalCard } from './OriginalCard';
 
@@ -58,8 +58,8 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
     }
   };
 
-  if (error) return <p className="pt-6">{error}</p>;
-  if (!detail) return <p className="pt-6 text-text-muted">Loading recipe…</p>;
+  if (error) return <p>{error}</p>;
+  if (!detail) return <p className="text-muted">Loading recipe…</p>;
 
   const { original, matches, adaptations } = detail;
   const missing = matches.filter((m) => m.status === 'missing' || m.status === 'insufficient');
@@ -67,10 +67,10 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
   const pub = detail.nutrition.publisher;
 
   return (
-    <div className="flex flex-col gap-4 pt-6">
+    <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">{original.title}</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <h1 className="font-display text-3xl font-semibold">{original.title}</h1>
+        <p className="mt-1 text-sm text-muted">
           {original.servings} servings
           {original.times.totalMin != null ? ` · ${original.times.totalMin} min` : ''}
         </p>
@@ -79,15 +79,15 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
       <Card>
         <div className="text-sm">
           ≈ {est.perServing.energyKcal ?? '?'} kcal · {est.perServing.proteinG ?? '?'} g protein per serving{' '}
-          <span className="text-text-muted">
+          <span className="text-muted">
             (based on {est.basedOn} of {est.total} ingredients)
           </span>
         </div>
         {pub?.energyKcal != null && (
-          <div className="mt-1 text-sm text-text-muted">Publisher&apos;s nutrition: {pub.energyKcal} kcal per serving</div>
+          <div className="mt-1 text-sm text-muted">Publisher&apos;s nutrition: {pub.energyKcal} kcal per serving</div>
         )}
         {est.estimatedFields.length > 0 && (
-          <details className="mt-1 text-xs text-text-muted">
+          <details className="mt-1 text-xs text-muted">
             <summary>Estimates used</summary>
             <ul className="list-disc pl-5">
               {est.estimatedFields.map((f, i) => (
