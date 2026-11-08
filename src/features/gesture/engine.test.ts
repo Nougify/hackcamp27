@@ -22,6 +22,8 @@ type Seg = {
   point?: 'right' | 'left' | 'up';
   /** finger droop for sideways points: dy = tilt·dx (normalized); 0 = level */
   tilt?: number;
+  /** classifier score, when it differs from the hand-detection score (`score`) */
+  gestureScore?: number;
 };
 
 /** Index straight, other fingers curled. Raw (unmirrored) camera coords, so screen-right = raw -x. */
@@ -76,7 +78,14 @@ class Rig {
           s.hand === false
             ? { hand: null }
             : s.point
-              ? { hand: { landmarks: pointLandmarks(s.point, 0.5 - this.mx, s.tilt), gesture: s.pose ?? 'None', score: s.score ?? 0.9 } }
+              ? {
+                  hand: {
+                    landmarks: pointLandmarks(s.point, 0.5 - this.mx, s.tilt),
+                    gesture: s.pose ?? 'None',
+                    score: s.gestureScore ?? s.score ?? 0.9,
+                    handScore: s.gestureScore !== undefined ? s.score ?? 0.95 : undefined,
+                  },
+                }
               : frame(s.pose ?? 'None', s.score ?? 0.95, this.mx, this.y, s.size ?? 0.3);
         for (const a of this.engine.update(f, t)) this.actions.push({ a, t });
         this.frameIdx++;
@@ -295,6 +304,12 @@ describe('pointing (next / previous step)', () => {
     expect(r.names()).toEqual(['ARM']);
   });
 
+  it('fires when the classifier scores the pose ~0 but the hand is clearly detected (real MediaPipe output)', () => {
+    const r = armed().run({ point: 'right', gestureScore: 0.05, score: 0.95, ms: 800 });
+    expect(r.of('NEXT_STEP')).toHaveLength(1);
+    expect(r.engine.hud(r.now).hint).toBeNull();
+  });
+
   it('a low-confidence point never fires (dim kitchen, blurred hand)', () => {
     const r = armed().run({ point: 'right', ms: 3000, score: 0.5 });
     expect(r.names()).toEqual(['ARM']);
@@ -307,12 +322,12 @@ describe('pointing (next / previous step)', () => {
   });
 
   it('a slight droop mid-hold does not break the hold (no second step)', () => {
-    const r = armed().run({ point: 'right', ms: 800 }, { point: 'right', tilt: 0.9, ms: 300 }, { point: 'right', ms: 3000 });
+    const r = armed().run({ point: 'right', ms: 800 }, { point: 'right', tilt: 1.3, ms: 300 }, { point: 'right', ms: 3000 });
     expect(r.of('NEXT_STEP')).toHaveLength(1);
   });
 
   it('a strongly tilted finger is not a sideways point', () => {
-    const r = armed().run({ point: 'right', tilt: 0.9, ms: 3000 });
+    const r = armed().run({ point: 'right', tilt: 2, ms: 3000 });
     expect(r.of('NEXT_STEP')).toHaveLength(0);
   });
 

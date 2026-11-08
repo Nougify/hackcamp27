@@ -6,6 +6,9 @@ export type EngineFrame = {
     landmarks: Array<{ x: number; y: number }>;
     gesture: CannedGesture;
     score: number;
+    /** Hand-detection confidence (MediaPipe handedness score). The gesture `score` is ~0 for a
+     *  sideways point because that pose isn't a classifier category, so points are gated on this. */
+    handScore?: number;
   };
   /** Camera frame width / height (landmarks are normalized per axis). Default 4/3. */
   aspect?: number;
@@ -40,6 +43,7 @@ export class GestureEngine {
   private poseSince = 0;
   private cand: Pose = 'None'; // raw pose waiting to settle
   private candSince = 0;
+  private pointWhy = '';
   private pointAnchor: Pt | null = null; // index tip where the current point hold started
   private fired = false;         // one-shot latch per continuous pose hold (ARM or discrete action)
   private needRelease = false;   // discrete pose action fired; pose must change before re-arming
@@ -57,7 +61,7 @@ export class GestureEngine {
 
   /** Internal pose, including Point_Left/Point_Right (the HUD contract only has canned names). For debug. */
   get debugPose(): string {
-    return this.pose;
+    return this.pointWhy && this.pointWhy !== 'ok' ? `${this.pose} (point: ${this.pointWhy})` : this.pose;
   }
 
   setConfig(c: GestureConfig): void {
@@ -120,14 +124,18 @@ export class GestureEngine {
     this.lastSeen = now;
 
     const low = h.score < c.minScore;
-    this.lowSince = low ? (this.lowSince ?? now) : null;
+    // "Turn on a light" follows hand-detection confidence; a sideways point has a ~0 gesture score by design.
+    const lowLight = (h.handScore ?? h.score) < c.minScore;
+    this.lowSince = lowLight ? (this.lowSince ?? now) : null;
     if (this.lowSince !== null && now - this.lowSince >= MORE_LIGHT_MS) hint = 'more_light';
     this.hint = hint;
 
     // A sideways point wins over the classifier label (it may call it a fist or None), but only on
     // confident frames. Once pointing, a looser angle keeps landmark noise from breaking the hold.
     const isPoint = (p: Pose) => p === 'Point_Left' || p === 'Point_Right';
-    const point = low ? null : pointDirection(h.landmarks, frame.aspect, isPoint(this.pose) || isPoint(this.cand));
+    const check = pointCheck(h.landmarks, frame.aspect, isPoint(this.pose) || isPoint(this.cand));
+    const point = (h.handScore ?? h.score) < c.minScore ? null : check.dir;
+    this.pointWhy = point ? 'ok' : check.dir ? 'low hand confidence' : check.why;
     const raw: Pose =
       point ?? (low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture);
     if (raw !== this.cand) {
@@ -271,19 +279,27 @@ type Pt = { x: number; y: number };
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Index finger straight and sideways, other fingers curled → which way it points on screen (mirrored view). */
-export function pointDirection(lm: Pt[], aspect = 4 / 3, sticky = false): 'Point_Left' | 'Point_Right' | null {
-  if (lm.length < 21) return null;
-  const [wrist, mcp, pip, tip] = [lm[0], lm[5], lm[6], lm[8]];
-  const palm = dist(wrist, lm[9]);
-  if (palm < 1e-3) return null;
-  // Index extended: tip well away from its knuckle and farther from the wrist than its middle joint.
-  if (dist(mcp, tip) < 0.6 * palm || dist(wrist, tip) < dist(wrist, pip)) return null;
-  // Middle, ring and pinky curled: each tip closer to the wrist than its middle joint.
-  for (const [p, t] of [[10, 12], [14, 16], [18, 20]]) if (dist(wrist, lm[t]) > dist(wrist, lm[p])) return null;
-  // Mostly horizontal (in pixels, not normalized units).
-  const dx = (tip.x - mcp.x) * aspect; // landmarks are normalized per axis; compare in pixels
-  const dy = tip.y - mcp.y;
-  if (Math.abs(dx) < (sticky ? 1.2 : 2) * Math.abs(dy)) return null; // hysteresis once already pointing
+export type PointCheck = { dir: 'Point_Left' | 'Point_Right' | null; why: string };
+
+/** Index finger extended and roughly sideways, other fingers curled → which way it points on screen (mirrored view).
+ *  `why` explains a rejection, for the debug overlay. Distances are compared in pixels, not normalized units. */
+export function pointCheck(lm: Pt[], aspect = 4 / 3, sticky = false): PointCheck {
+  const no = (why: string): PointCheck => ({ dir: null, why });
+  if (lm.length < 21) return no('no landmarks');
+  const px = (p: Pt) => ({ x: p.x * aspect, y: p.y });
+  const d = (a: number, b: number) => dist(px(lm[a]), px(lm[b]));
+  const palm = d(0, 9);
+  if (palm < 1e-3) return no('no hand');
+  // Index extended: tip away from its knuckle, and farther from the wrist than its middle joint.
+  if (d(5, 8) < 0.45 * palm || d(0, 8) < d(0, 6)) return no('index not straight');
+  // Middle, ring and pinky curled: each tip no farther from the wrist than its middle joint (+10% slack).
+  for (const [p, t] of [[10, 12], [14, 16], [18, 20]]) if (d(0, t) > 1.1 * d(0, p)) return no('other fingers open');
+  // Roughly sideways: within ~40° of horizontal (~50° once already pointing).
+  const dx = (lm[8].x - lm[5].x) * aspect;
+  const dy = lm[8].y - lm[5].y;
+  if (Math.abs(dx) < (sticky ? 0.85 : 1.2) * Math.abs(dy)) return no('not sideways');
   // Raw camera x is mirrored on screen: a tip further LEFT in the raw image points to the screen's RIGHT.
-  return dx < 0 ? 'Point_Right' : 'Point_Left';
+  return { dir: dx < 0 ? 'Point_Right' : 'Point_Left', why: 'ok' };
 }
+
+export const pointDirection = (lm: Pt[], aspect?: number, sticky?: boolean) => pointCheck(lm, aspect, sticky).dir;
