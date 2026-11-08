@@ -3,7 +3,13 @@ import { pantryFixture } from '@/contracts/fixtures';
 import { originalRecipesFixture } from '@/contracts/fixtures';
 import type { AdaptationOutput } from '@/lib/gemini/schemas';
 import { UnprocessableError } from '@/lib/errors';
-import { buildAdaptedRecipe, requestAdaptation, validateAdaptation, type AdaptValidationContext } from './adapt';
+import {
+  adaptationStillAllowed,
+  buildAdaptedRecipe,
+  requestAdaptation,
+  validateAdaptation,
+  type AdaptValidationContext,
+} from './adapt';
 
 const yogurt = pantryFixture.find((p) => p.normalizedName === 'greek yogurt')!;
 
@@ -36,6 +42,26 @@ function output(over: Partial<AdaptationOutput> = {}): AdaptationOutput {
     ...over,
   };
 }
+
+describe('validateAdaptation: allergens hidden outside the substitution', () => {
+  it('rejects an allergen added to the changed ingredient list', () => {
+    const out = output({ ingredients: [{ text: '2 tbsp peanut butter', changed: true }] });
+    const v = validateAdaptation(out, ctx({ allergens: ['peanut'] }));
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(' ')).toMatch(/peanut/);
+  });
+
+  it('rejects an allergen slipped into a rewritten step', () => {
+    const out = output({ stepChanges: [{ stepIndex: 0, newText: 'Stir in the peanut butter.' }] });
+    expect(validateAdaptation(out, ctx({ allergens: ['peanut'] })).ok).toBe(false);
+  });
+
+  it('a stored adaptation is skipped once the user adds a conflicting allergen', () => {
+    const adapted = buildAdaptedRecipe(originalRecipesFixture[0]!, output(), 'm');
+    expect(adaptationStillAllowed(adapted, { diets: [], allergens: [] })).toBe(true);
+    expect(adaptationStillAllowed(adapted, { diets: [], allergens: ['milk'] })).toBe(false); // Greek yogurt
+  });
+});
 
 describe('validateAdaptation', () => {
   it('accepts a valid adaptation', () => {

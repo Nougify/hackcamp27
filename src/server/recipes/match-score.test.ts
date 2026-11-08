@@ -31,6 +31,12 @@ describe('matchIngredients', () => {
     expect(m?.status).toBe('have');
   });
 
+  it('cilantro and coriander match both ways', () => {
+    const herb = (n: string) => ({ ...pantryFixture[4]!, normalizedName: n, name: n });
+    expect(matchIngredients([ing({ raw: 'cilantro', normalizedName: 'cilantro' })], [herb('coriander')])[0]?.status).toBe('have');
+    expect(matchIngredients([ing({ raw: 'coriander', normalizedName: 'coriander' })], [herb('cilantro')])[0]?.status).toBe('have');
+  });
+
   it('matches token subsets ("chicken thigh" ⊂ "boneless chicken thighs")', () => {
     const [m] = matchIngredients([ing({ raw: 'chicken thigh', normalizedName: 'chicken thigh' })], [
       { ...pantryFixture[1]!, normalizedName: 'boneless chicken thigh' },

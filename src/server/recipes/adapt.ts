@@ -69,7 +69,28 @@ export function validateAdaptation(output: AdaptationOutput, ctx: AdaptValidatio
     }
   }
 
+  // The model can slip an allergen into the cooked ingredient list or a rewritten step
+  // while keeping the substitution text clean, so check everything it changed.
+  const changedTexts = [
+    ...output.ingredients.filter((i) => i.changed).map((i) => i.text),
+    ...output.stepChanges.map((c) => c.newText),
+  ];
+  const changedCheck = checkDiet(changedTexts, { diets: ctx.diets, allergens: ctx.allergens });
+  for (const v of changedCheck.violations) {
+    errors.push(`changed text violates ${v.rule}: "${v.ingredientRaw.slice(0, 80)}"`);
+  }
+
   return { ok: errors.length === 0, errors };
+}
+
+/** True if a stored adaptation still fits the user's current diets/allergens (they may have changed since). */
+export function adaptationStillAllowed(a: Pick<AdaptedRecipe, 'ingredients' | 'substitutions' | 'steps'>, filters: { diets: DietFlag[]; allergens: Allergen[] }): boolean {
+  const texts = [
+    ...a.ingredients.filter((i) => i.changed).map((i) => i.text),
+    ...a.substitutions.map((s) => s.substitute).filter((s): s is string => !!s),
+    ...a.steps.filter((s) => s.changed).map((s) => s.text),
+  ];
+  return checkDiet(texts, filters).ok;
 }
 
 export function buildAdaptPrompt(

@@ -5,7 +5,7 @@ import { handleRouteError, isUuid, jsonError, jsonOk } from '@/lib/http';
 import { estimateRecipeNutrition } from '@/server/nutrition/recipe';
 import { matchIngredients } from '@/server/recipes/match';
 import { findMatchingAdaptation, getRecipeDetail, insertAdaptation } from '@/server/recipes/store';
-import { requestAdaptation } from '@/server/recipes/adapt';
+import { adaptationStillAllowed, requestAdaptation } from '@/server/recipes/adapt';
 import { getProfileFilters, listPantryForMatching } from '@/server/recipes/pantry-view';
 import type { AdaptResponse } from '@/contracts/api';
 import type { Allergen, DietFlag } from '@/contracts/domain';
@@ -35,7 +35,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     // Cached variant covering the same missing set (F9 step 5).
     const cached = findMatchingAdaptation(detail.adaptations, missingRaws);
-    if (cached) {
+    if (cached && adaptationStillAllowed(cached, { diets, allergens })) {
       const parsed = cached.ingredients.map((i) => i.parsed);
       const nutrition = estimateRecipeNutrition({
         ingredients: parsed,

@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         while (next < urls.length && !stop()) {
           const url = urls[next++]!;
           try {
-            const fetched = await safeFetchHtml(url);
+            const fetched = await safeFetchHtml(url, { signal });
             const extracted = await extractRecipe(fetched.text, fetched.finalUrl);
             if (!extracted) {
               excludedCount++;

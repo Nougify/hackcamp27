@@ -4,7 +4,7 @@ import type { PantryItem, PantryMatch, RecipeIngredient } from '@/contracts/doma
 const SYNONYMS: Record<string, string[]> = {
   'green onion': ['scallion', 'spring onion'],
   chickpea: ['garbanzo', 'garbanzo bean'],
-  coriander: ['cilantro'],
+  coriander: ['cilantro', 'coriander leaf'], // one entry: a second key would overwrite the alias
   eggplant: ['aubergine'],
   zucchini: ['courgette'],
   'bell pepper': ['capsicum', 'sweet pepper'],
@@ -19,7 +19,6 @@ const SYNONYMS: Record<string, string[]> = {
   'green bean': ['string bean', 'french bean'],
   'snap pea': ['sugar snap pea'],
   'chili pepper': ['chilli', 'chile'],
-  cilantro: ['coriander leaf'],
 };
 
 const aliasToCanonical = new Map<string, string>();

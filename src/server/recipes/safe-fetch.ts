@@ -25,6 +25,8 @@ export interface SafeFetchOptions {
   maxBytes?: number; // default 2 MB
   maxRedirects?: number; // default 5
   userAgent?: string; // default RECIPE_FETCH_USER_AGENT
+  /** Caller cancellation (e.g. the search stream was abandoned). */
+  signal?: AbortSignal;
   /** Test-only escape hatch for localhost fixture servers. Never true in prod. */
   allowPrivate?: boolean;
 }
@@ -186,7 +188,7 @@ export async function safeFetchHtml(rawUrl: string, opts: SafeFetchOptions = {})
       try {
         res = await fetch(url.toString(), {
           redirect: 'manual',
-          signal: controller.signal,
+          signal: opts.signal ? AbortSignal.any([controller.signal, opts.signal]) : controller.signal,
           dispatcher,
           headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' },
         });

@@ -72,7 +72,10 @@ export async function finishSession(userId: string, sessionId: string, input: Fi
     // Same view as the finish preview (FEFO, no expired items), read inside the transaction.
     const users = await tx<Array<{ tz: string }>>`SELECT tz FROM users WHERE id = ${userId} LIMIT 1`;
     const tz = users[0]?.tz ?? 'America/Vancouver';
-    const pantryRows = await tx<PantryRow[]>`SELECT * FROM pantry_items WHERE user_id = ${userId}`;
+    const pantryRows = await tx<PantryRow[]>`
+      SELECT * FROM pantry_items WHERE user_id = ${userId}
+      ORDER BY expiry_date NULLS LAST, normalized_name
+    `; // same order as the preview, so ties resolve to the same rows
     const pantry = pantryForMatching(pantryRows, tz, new Date(), 200);
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
