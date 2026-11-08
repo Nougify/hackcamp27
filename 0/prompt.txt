@@ -1,0 +1,17 @@
+is merge vertex global a new branch ?
+
+---
+
+can you merge into main ?
+
+---
+
+I don't see any pr ? can you commit the pr and I will accept it ?
+
+---
+
+[Image #13] ui of voice and screen stays on is not clean... [Image #14] setting emote can be twoce bigger. in /cook/... [Image #15] the number of calories and protein need to have a way bigger font please. and kcal and g is as is but next to their big number, it makes it clean. [Image #16] Instead of only saying Today, I was thinking of maybe adding Good morning (name)! Today... [Image #17] always the same issur with dropdown arrow in timezone in settings. it needs to have a cleaner UI. add also the hover effect of cursor pointer when the pointer hover a clickable button.
+
+---
+
+can you push
