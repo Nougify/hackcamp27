@@ -74,7 +74,7 @@ export const finishPreviewFixture: FinishPreview = {
       pantryItemName: 'Old Cheddar Cheese',
       proposedQtyBase: null,
       availableQtyBase: 250,
-      dim: 'volume',
+      dim: 'mass', // pantry item's dim: the unit of availableQtyBase and of what /finish deducts
       display: 'Old Cheddar Cheese: 3/4 cup vs 250 g, no density → Adjust manually',
       status: 'unconvertible',
     },

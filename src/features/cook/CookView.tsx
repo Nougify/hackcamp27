@@ -4,12 +4,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { CookingController, CookSessionView } from "@/contracts";
-import { Badge, Button, buttonClass } from "@/components/ui";
+import type { CookingController, CookSessionView, FinishResult } from "@/contracts";
+import { Badge, Button, buttonClass, useToast } from "@/components/ui";
 import { GestureSettings, loadPrefs, savePrefs, type CookPrefs } from "@/features/gesture";
 import { useVoice } from "@/features/voice";
 import { askNotificationPermission, ringAlarm, unlockAudio } from "./alarm";
 import { getSession, patchSession } from "./api";
+import { FinishDialog } from "./FinishDialog";
 import { initCookState, makeCookReducer } from "./reducer";
 import { clearCook, loadCook, saveCook, type SavedCook } from "./resume";
 import { formatMs, parseDurationSeconds, timerMs } from "./timers";
@@ -64,6 +65,8 @@ function Cooking({ view }: { view: CookSessionView }) {
   const [started, setStarted] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const toast = useToast();
   const [prefs, setPrefs] = useState<CookPrefs>(loadPrefs);
   const updatePrefs = (p: CookPrefs) => {
     setPrefs(p);
@@ -262,6 +265,21 @@ function Cooking({ view }: { view: CookSessionView }) {
     if (prefs.autoRead && first && first.index === state.stepIndex) void voice?.speak(first.text);
   };
 
+  // Finish (SPEC F14 / UF8): the server transaction is done; release everything and go to Today.
+  const finished = (r: FinishResult) => {
+    voice?.stop();
+    setHandsFree(false);
+    wake.release();
+    clearCook(session.id);
+    const m = r.mealLog;
+    toast(
+      m
+        ? `Logged ${m.servings ?? 1} serving${m.servings === 1 ? "" : "s"} · ${Math.round(m.kcal)} kcal · ${Math.round(m.proteinG)} g protein`
+        : "Pantry updated",
+    );
+    router.push("/today");
+  };
+
   const exit = () => {
     voice?.stop();
     setHandsFree(false);
@@ -309,6 +327,7 @@ function Cooking({ view }: { view: CookSessionView }) {
             Hands-free
           </Button>
           <Button variant="ghost" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
+          <Button variant="ghost" onClick={() => setFinishOpen(true)}>Finish</Button>
           <Button variant="ghost" onClick={exit}>Exit</Button>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
@@ -364,9 +383,15 @@ function Cooking({ view }: { view: CookSessionView }) {
           <Button size="lg" variant="secondary" className="min-h-18" onClick={controller.toggleSpeak}>
             {state.speaking ? "Stop" : "Read"}
           </Button>
-          <Button size="lg" className="min-h-18" onClick={controller.nextStep} disabled={state.stepIndex === total - 1}>
-            Next →
-          </Button>
+          {state.stepIndex === total - 1 ? (
+            <Button size="lg" className="min-h-18" onClick={() => setFinishOpen(true)}>
+              Finish cooking
+            </Button>
+          ) : (
+            <Button size="lg" className="min-h-18" onClick={controller.nextStep}>
+              Next →
+            </Button>
+          )}
         </div>
       </footer>
 
@@ -379,6 +404,13 @@ function Cooking({ view }: { view: CookSessionView }) {
           onExit={() => setHandsFree(false)}
         />
       )}
+      <FinishDialog
+        sessionId={session.id}
+        servingsPlanned={session.servingsPlanned}
+        open={finishOpen}
+        onClose={() => setFinishOpen(false)}
+        onFinished={finished}
+      />
       <GestureSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} prefs={prefs} onChange={updatePrefs} />
       <div ref={live} aria-live="polite" className="sr-only" />
     </main>
