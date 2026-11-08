@@ -24,7 +24,7 @@ const schema = z.object({
   DATABASE_URL_TEST: z.string().regex(PG_URL, 'must be a postgres:// connection string').optional(),
 
   GOOGLE_CLOUD_PROJECT: z.string().min(1),
-  GOOGLE_CLOUD_LOCATION: z.string().min(1).catch('us-central1'), // blank line in .env also falls back
+  GOOGLE_CLOUD_LOCATION: z.string().min(1).catch('global'), // blank line in .env also falls back; gemini-3.8-flash is global-only
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   GEMINI_SEARCH_MODEL: z.string().default('gemini-3.8-flash'),
 

@@ -36,7 +36,7 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project <PROJECT_ID>
 ```
 
-Then set `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` in `.env.local` (`GOOGLE_CLOUD_LOCATION` defaults to `us-central1`). Check it works with:
+Then set `GOOGLE_CLOUD_PROJECT=<PROJECT_ID>` in `.env.local` (`GOOGLE_CLOUD_LOCATION` defaults to `global`). Check it works with:
 
 ```bash
 node --env-file=.env.local scripts/gemini-smoke.mjs
