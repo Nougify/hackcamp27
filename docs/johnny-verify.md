@@ -33,14 +33,17 @@ The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `o
 - **Staging data isn't realistic.** It holds test products for the GS1 example codes (`5901234123457` is "Pancakes"), and its Nutella has an empty `quantity`. Fixtures therefore come from a production read.
 
 ### 6. Tiger: TimescaleDB present, hypertable syntax, tz-aware time_bucket, real-time cagg, connection string, storage cap
-**Blocked (2026-11-08):** both `DATABASE_URL` and `DATABASE_URL_TEST` in `.env.local` have **no password** (`postgres://tsdbadmin@host:port/tsdb?sslmode=require`), so connecting fails with `28P01 password authentication failed`. Add the password from the Tiger config download (URL-encode special characters). Then:
-1. `SELECT extname, extversion FROM pg_extension;` and confirm `timescaledb` is listed.
-2. `node scripts/migrate.mjs --test`. This checks that `WITH (tsdb.hypertable…)` accepts the composite PK and that `time_bucket(…, 'America/Vancouver')` works in the cagg.
-3. Insert a meal, then `SELECT * FROM daily_nutrition` right away to confirm real-time aggregation.
-
-Migration design (dev's `scripts/migrate.mjs`, run with `npm run migrate` / `npm run test:db`):
-- Every file runs in its own transaction (`sql.begin`), and versions are tracked by filename in `schema_migrations`.
-- **Open risk:** 0002 creates a continuous aggregate and its policy inside that transaction, and TimescaleDB may reject that ("cannot run inside a transaction block"). Verify on the fork first. If it fails, `migrate.mjs` needs a no-transaction path for 0002.
+**Verified 2026-11-08** on `mise-test` (fork) and `mise-db`, both already migrated by a teammate with dev's `migrate.mjs`:
+- **Extensions:** `timescaledb@2.31.0`, `timescaledb_toolkit@1.26.0`, `pgcrypto@1.4` on PostgreSQL 18.6. Session time zone is `Etc/UTC`.
+- **Migrations:** `0001_init.sql` and `0002_timescale.sql` are in `schema_migrations` on both DBs. So **0002 runs fine inside a transaction** with dev's `migrate.mjs`; no no-transaction path is needed.
+- **Hypertables:** `meal_logs` (`eaten_at`, 7-day chunks) and `pantry_events` (`occurred_at`, 7-day chunks). `WITH (tsdb.hypertable…)` accepted the composite PK `PRIMARY KEY (id, eaten_at)`.
+- **Continuous aggregate:** `daily_nutrition` uses `time_bucket('1 day', eaten_at, 'America/Vancouver')`, so the tz argument works. `materialized_only = false` (real-time). The refresh policy runs every 15 min with start_offset 30 days and end_offset 1 hour.
+- **Real-time check (§14.3 #4):** a meal inserted and read back in one rolled-back transaction showed up in `daily_nutrition` immediately (540 kcal / 32 g, 1 entry), served by the raw `meal_logs` part of the plan.
+- **Tiger defaults not in our SQL:** `policy_compression` with `compress_after = 7 days` on both hypertables. TimescaleDB 2.31 supports UPDATE/DELETE on compressed chunks, so deleting an old meal still works.
+- **Time zone:** both the DB tzdata and Node (tzdata 2026e) give America/Vancouver as **UTC−7 (PDT) on 2026-11-08**, i.e. BC's permanent Pacific time. Day buckets start 07:00 UTC, and Node's `local_date` and the cagg's `day` agree.
+- **Connection string:** `postgres://tsdbadmin:<password>@<id>.<project>.tsdb.cloud.timescale.com:<port>/tsdb?sslmode=require`. **The password must be added by hand**, because the Tiger CLI/console string omits it. Special characters need URL-encoding.
+- **Storage cap:** not checked (the 750 MB figure is still third-party). Both DBs are empty.
+- Migration 0003 (grace days, `johnny/contract-grace`) is **not applied yet**. Apply it after that branch merges: `npm run migrate -- --test`, then `npm run migrate`.
 
 ### 7. `auth0.getSession()` with no args in route handlers
 **Partly verified 2026-11-08** against the real tenant (`next dev`, no browser):
