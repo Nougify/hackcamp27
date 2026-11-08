@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       const profile = await getProfileFilters(user.id);
       const diets = [...new Set([...profile.diets, ...(body.extraDiets ?? [])])] as DietFlag[];
       const allergens = profile.allergens as Allergen[];
-      const pantry = await listPantryForMatching(user.id, profile.tz, new Date(), 200);
+      const pantry = await listPantryForMatching(user.id, profile.tz, new Date(), 200, profile.pastBestBeforeGraceDays);
 
       const mustUseIds =
         body.mustUsePantryItemIds ?? pantry.filter((p) => p.daysToExpiry != null && p.daysToExpiry <= 3).map((p) => p.id);
