@@ -1,0 +1,12 @@
+<pasted_content id="5b79">
+Update this Next.js application to use Google Cloud Vertex AI with Application Default Credentials (ADC) instead of a Google AI Studio API key (GEMINI_API_KEY or GOOGLE_API_KEY).
+Please do the following:
+1. Update Dependencies: Replace @google/generative-ai (or update @google/genai) with the official @google-cloud/vertexai SDK (or configure @google/genai with vertexai: true).
+2. Remove API Keys: Remove any apiKey initialization parameters from the server-side code (API routes / Server Actions) so the SDK automatically falls back to local Application Default Credentials (ADC).
+3. Configure Environment Variables: Replace GEMINI_API_KEY in .env.local and .env.example with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION (defaulting to us-central1).
+4. Update Model Initialization: Initialize the Vertex AI client using process.env.GOOGLE_CLOUD_PROJECT and process.env.GOOGLE_CLOUD_LOCATION and ensure all Gemini calls run strictly on the server side."
+</pasted_content id="5b79">
+
+---
+
+OMG IT WORKS CAN YOU COMMIT PUSH AND MERGE
