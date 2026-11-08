@@ -10,20 +10,22 @@ export type EngineFrame = {
 };
 
 type Snapshot = Omit<GestureHud, 'fps' | 'error'>;
+/** MediaPipe has no sideways-point gesture, so the engine adds two poses detected from landmarks. */
+type Pose = CannedGesture | 'Point_Left' | 'Point_Right';
 
-const PALM = [0, 5, 9, 13, 17];
-const DISCRETE: Partial<Record<CannedGesture, GestureAction>> = {
+const DISCRETE: Partial<Record<Pose, GestureAction>> = {
   Closed_Fist: 'TIMER_TOGGLE',
   Victory: 'SPEAK_TOGGLE',
+  Point_Right: 'NEXT_STEP', // toward the screen's right, as the user sees themselves mirrored
+  Point_Left: 'PREV_STEP',
 };
-const SCROLL: Partial<Record<CannedGesture, GestureAction>> = {
+const SCROLL: Partial<Record<Pose, GestureAction>> = {
   Thumb_Up: 'SCROLL_UP',
   Thumb_Down: 'SCROLL_DOWN',
 };
 const EDGE = 0.01;
 const MORE_LIGHT_MS = 3000;
 const SCROLL_RELEASE_COOLDOWN_MS = 300;
-const EMA_ALPHA = 0.5;
 // A new pose must persist this long before it counts, so one jittery frame can't break a hold (≈2 frames at 15 fps).
 const POSE_SETTLE_MS = 150;
 
@@ -31,9 +33,9 @@ export class GestureEngine {
   private cfg: GestureConfig;
   private present = false;       // a valid hand was seen and not yet lost >= releaseMs
   private lastSeen = 0;
-  private pose: CannedGesture = 'None';
+  private pose: Pose = 'None';
   private poseSince = 0;
-  private cand: CannedGesture = 'None'; // raw pose waiting to settle
+  private cand: Pose = 'None'; // raw pose waiting to settle
   private candSince = 0;
   private fired = false;         // one-shot latch per continuous pose hold (ARM or discrete action)
   private needRelease = false;   // discrete pose action fired; pose must change before re-arming
@@ -44,8 +46,6 @@ export class GestureEngine {
   private lastAction: Snapshot['lastAction'] = null;
   private hint: Snapshot['hint'] = null;
   private lowSince: number | null = null;
-  private ema: { x: number; y: number } | null = null;
-  private buf: Array<{ t: number; x: number; y: number; fist: boolean }> = [];
 
   constructor(config: GestureConfig) {
     this.cfg = config;
@@ -71,8 +71,6 @@ export class GestureEngine {
     this.lastAction = null;
     this.hint = null;
     this.lowSince = null;
-    this.ema = null;
-    this.buf = [];
   }
 
   update(frame: EngineFrame, now: number): GestureAction[] {
@@ -116,8 +114,10 @@ export class GestureEngine {
     if (this.lowSince !== null && now - this.lowSince >= MORE_LIGHT_MS) hint = 'more_light';
     this.hint = hint;
 
-    const raw: CannedGesture =
-      low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture;
+    // A sideways point wins over the classifier label (it may call it a fist or None).
+    const raw: Pose =
+      pointDirection(h.landmarks) ??
+      (low || (h.gesture === 'Closed_Fist' && h.score < c.fistMinScore) ? 'None' : h.gesture);
     if (raw !== this.cand) {
       this.cand = raw;
       this.candSince = now;
@@ -135,16 +135,7 @@ export class GestureEngine {
     // Debouncing only protects the latch; actions need the pose to be showing right now.
     const steady = raw === pose;
 
-    // Palm centre, mirrored so directions match what the user sees, then EMA-smoothed.
-    const sx = PALM.reduce((s, i) => s + h.landmarks[i].x, 0) / PALM.length;
-    const sy = PALM.reduce((s, i) => s + h.landmarks[i].y, 0) / PALM.length;
-    const mx = 1 - sx;
-    this.ema = this.ema
-      ? { x: EMA_ALPHA * mx + (1 - EMA_ALPHA) * this.ema.x, y: EMA_ALPHA * sy + (1 - EMA_ALPHA) * this.ema.y }
-      : { x: mx, y: sy };
-
     if (!this.isArmed()) {
-      this.buf.length = 0;
       if (steady && pose === 'Open_Palm' && !this.fired && now - this.poseSince >= c.armHoldMs) {
         this.fired = true; // latch: palm held through a later expiry does not instantly re-arm
         this.armedUntil = now + c.armWindowMs;
@@ -152,24 +143,18 @@ export class GestureEngine {
       }
       return out;
     }
-    if (this.isCooling(now)) {
-      this.buf.length = 0;
-      return out;
-    }
+    if (this.isCooling(now)) return out;
 
     // Hold timing starts when the cooldown ends, not when the pose began.
     const base = Math.max(this.poseSince, this.cooldownUntil);
     const discrete = DISCRETE[pose];
     const scroll = SCROLL[pose];
-    let acted = false;
     if (steady && discrete && !this.fired && now - base >= c.actionHoldMs) {
       this.fired = true;
       this.needRelease = true;
       this.cooldownUntil = now + c.cooldownMs;
       this.armedUntil = now + c.armWindowMs;
-      this.buf.length = 0;
       emit(discrete);
-      acted = true;
     } else if (steady && scroll) {
       this.nextScroll ??= base + c.scrollFirstMs;
       if (now >= this.nextScroll) {
@@ -178,15 +163,6 @@ export class GestureEngine {
         this.scrolled = true;
         this.armedUntil = now + c.armWindowMs;
         emit(scroll);
-        acted = true;
-      }
-    }
-    if (!acted) {
-      const a = this.detectSwipe(now, raw === 'Closed_Fist');
-      if (a) {
-        this.cooldownUntil = now + c.cooldownMs;
-        this.armedUntil = now + c.armWindowMs;
-        emit(a);
       }
     }
     return out;
@@ -229,7 +205,7 @@ export class GestureEngine {
     }
     return {
       state,
-      pose,
+      pose: pose === 'Point_Left' || pose === 'Point_Right' ? 'Pointing_Up' : pose, // contract only knows canned names
       holdProgress: Math.min(1, Math.max(0, holdProgress)),
       pendingAction,
       armedRemainingMs: this.isArmed() && !c.alwaysArmed ? Math.max(0, this.armedUntil - now) : 0,
@@ -261,29 +237,28 @@ export class GestureEngine {
     this.poseSince = now;
     this.cand = 'None';
     this.candSince = now;
-    this.buf = [];
-    this.ema = null;
   }
 
-  private detectSwipe(now: number, fist: boolean): GestureAction | null {
-    const c = this.cfg;
-    const b = this.buf;
-    b.push({ t: now, x: this.ema!.x, y: this.ema!.y, fist });
-    while (b[0].t < now - c.swipeWindowMs) b.shift();
-    if (b.length < 2) return null;
-    const first = b[0];
-    const last = b[b.length - 1];
-    const dx = last.x - first.x;
-    const dy = last.y - first.y;
-    if (Math.abs(dx) < c.swipeMinDx || Math.abs(dx) < c.swipeDxToDyRatio * Math.abs(dy)) return null;
-    if (b.filter((p) => p.fist).length * 2 > b.length) return null;
-    let peak = 0;
-    for (let i = 1; i < b.length; i++) {
-      const dt = b[i].t - b[i - 1].t;
-      if (dt > 0) peak = Math.max(peak, (Math.sign(dx) * (b[i].x - b[i - 1].x) * 1000) / dt);
-    }
-    if (peak < c.swipeMinVelocity) return null;
-    b.length = 0;
-    return dx < 0 === (c.swipeNextDirection === 'left') ? 'NEXT_STEP' : 'PREV_STEP';
-  }
+}
+
+type Pt = { x: number; y: number };
+const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+const ASPECT = 4 / 3; // landmarks are normalized per axis; the camera frame is 640×480
+
+/** Index finger straight and sideways, other fingers curled → which way it points on screen (mirrored view). */
+export function pointDirection(lm: Pt[]): 'Point_Left' | 'Point_Right' | null {
+  if (lm.length < 21) return null;
+  const [wrist, mcp, pip, tip] = [lm[0], lm[5], lm[6], lm[8]];
+  const palm = dist(wrist, lm[9]);
+  if (palm < 1e-3) return null;
+  // Index extended: tip well away from its knuckle and farther from the wrist than its middle joint.
+  if (dist(mcp, tip) < 0.6 * palm || dist(wrist, tip) < dist(wrist, pip)) return null;
+  // Middle, ring and pinky curled: each tip closer to the wrist than its middle joint.
+  for (const [p, t] of [[10, 12], [14, 16], [18, 20]]) if (dist(wrist, lm[t]) > dist(wrist, lm[p])) return null;
+  // Mostly horizontal (in pixels, not normalized units).
+  const dx = (tip.x - mcp.x) * ASPECT;
+  const dy = tip.y - mcp.y;
+  if (Math.abs(dx) < 2 * Math.abs(dy)) return null;
+  // Raw camera x is mirrored on screen: a tip further LEFT in the raw image points to the screen's RIGHT.
+  return dx < 0 ? 'Point_Right' : 'Point_Left';
 }

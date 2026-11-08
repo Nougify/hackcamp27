@@ -1588,7 +1588,7 @@ No published thresholds exist for kitchen gesture control. Every number below is
 | User control (confirmed) | Gesture | Fires | Why |
 |---|---|---|---|
 | *(prerequisite)* Arm | `Open_Palm` held ≥ **600 ms** | `ARM`, armed for **5 s**. The window extends after each action | Stirring, chopping and reaching never fire commands |
-| Next / previous step | **Horizontal swipe** while armed | `NEXT_STEP` / `PREV_STEP` | Natural page turn. Default: hand moves **right→left = next** (phone-carousel convention), configurable |
+| Next / previous step | **Index finger pointing right / left**, held ≥ **800 ms**, while armed (detected from landmarks; replaced swipes, which didn't fire reliably in testing) | `NEXT_STEP` / `PREV_STEP` (once per hold) | Pointing toward the screen's right = next, left = previous (mirrored view) |
 | Scroll up / down | `Thumb_Up` / `Thumb_Down` held | First tick at **600 ms**, then every **700 ms** while held, each scrolling **40% of the viewport** | Avoids up/down swipes, which collide with stirring and reaching |
 | Start / pause step timer | `Closed_Fist` held ≥ **800 ms**, score ≥ **0.8** | `TIMER_TOGGLE` (once per hold) | Distinct pose. A long hold and high score guard against a fist around a spoon handle |
 | Read step aloud / stop | `Victory` held ≥ **800 ms** | `SPEAK_TOGGLE` (once per hold) | Rare in kitchen motion and easier to form than ILoveYou |
@@ -1623,7 +1623,9 @@ Rules:
 - **Global cooldown:** 1200 ms after any discrete action (swipe, timer, speak). Scroll ticks don't trigger it, but a release after scrolling adds a 300 ms cooldown.
 - **Successful actions extend the armed window** by another 5 s from the action time.
 
-### 11.3 Swipe detection
+### 11.3 Swipe detection (removed)
+
+**Superseded (Jerry, 2026-11-07):** swipes didn't fire reliably in the first webcam test, so next/previous use a held sideways point instead (`pointDirection()` in `features/gesture/engine.ts`: index straight and mostly horizontal, other fingers curled). The swipe fields stay in `GestureConfig` only because the contract is frozen. The original design follows for reference.
 
 - Palm centre = mean of landmarks **0, 5, 9, 13, 17**. Smooth with an EMA (α = 0.5) before computing velocity.
 - Mirror x so directions match what the user sees: `x' = 1 − x`. **Never use the handedness label for direction.**
@@ -1902,7 +1904,7 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 - **9.** Pinned exactly: `next` 16.4.5, `react`/`react-dom` 19.3.1, `@auth0/nextjs-auth0` 4.33.0, `postgres` 4.1.0, `zod` 4.6.7 (has `z.fromJSONSchema` and `z.toJSONSchema`), `@mediapipe/tasks-vision` 1.2.2, `barcode-detector` 3.2.3 (bundles `zxing-wasm` 3.1.6), `@google/genai` 3.0.0, `recipe-scrapers` 3.5.0 (TypeScript, MIT, last published 2026-10-31), `tailwindcss` 4.3.5 (via `@tailwindcss/turbopack`), `vitest` 5.1.0, `@playwright/test` 1.65.0. Kept create-next-app's `typescript` 5.9.3 and `eslint` 9.39.5 (TS 7 and ESLint 10 exist but weren't adopted), and `@types/node` 22.20.5 to match the Node 22 runtime. **Decision:** create-next-app 16.4.5 enables `cacheComponents` by default; it is **off**, so session reads render dynamically as this spec assumes. `npm run typecheck` runs `next typegen` first, so the global `PageProps`/`LayoutProps` types exist.
 - **12.** The team has an ElevenLabs key. Tier and quota are checked when `/api/tts` lands (voice branch).
 - **13.** Entire CLI 0.13.1: there is no `/session handoff` (`entire session` has `resume`, `attach`, `adopt`). `entire blame` and `entire why` are Labs commands and available. Trails work on the current plan (trails 1–3 exist). The Brain plugin isn't installed on Jerry's machine (`entire plugin install brain`). The MLH prize wording still needs to be confirmed with the rep.
-- **14.** *Pending* hallway test once hands-free works (gestures branch).
+- **14.** First webcam test: swipes didn't work, so **next/previous are now "point right / point left" (held 0.8 s)** and swipe is removed (§11.1, §11.3). Other thresholds: *pending* further testing.
 - **16.** *Pending* until the CSP in `next.config.ts` lands (Hang), then checked in the browser console with hands-free on.
 
 ---

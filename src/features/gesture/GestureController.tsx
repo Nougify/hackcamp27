@@ -21,6 +21,8 @@ const DONE: Record<GestureAction, string> = {
 const HOLDING: Partial<Record<GestureAction, string>> = {
   TIMER_TOGGLE: "Hold fist…",
   SPEAK_TOGGLE: "Hold victory…",
+  NEXT_STEP: "Hold point…",
+  PREV_STEP: "Hold point…",
   SCROLL_UP: "Scrolling up",
   SCROLL_DOWN: "Scrolling down",
   ARM: "Hold your palm…",
@@ -34,7 +36,7 @@ const ERRORS: Record<NonNullable<GestureHud["error"]>, string> = {
 };
 const LEGEND = [
   ["✋", "Hold palm: start"],
-  ["👈", "Swipe: next / back"],
+  ["👉", "Point right / left: next / back"],
   ["👍", "Thumb up/down: scroll"],
   ["✊", "Fist: timer"],
   ["✌️", "Victory: read aloud"],
