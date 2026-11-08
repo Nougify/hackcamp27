@@ -1,0 +1,24 @@
+<pasted_content id="5694">
+5. Create Your First Trail
+Trails are our reinvention of a pull request. From a single project view, you can now track discussions, investigate related sessions, and make changes across multiple repositories at once. From your repository root, create your trail:
+
+entire trail create --title "My first Entire trail"
+
+This creates a new trail and links the current branch. Check that the trail is created:
+
+entire trail show 
+
+Any new changes, sessions, and checkpoints in this branch will automatically be linked to your Trail. Start your agent and give it a small task:
+
+Create a file named first-trail.md with a short note explaining that this is my first Entire Trail.
+
+When the agent finishes, commit and push the change:
+
+git add first-trail.md
+git commit -m "Add first checkpoint in new Trail"
+git push origin my-first-entire-trail
+
+When prompted to link this commit to session context, select Y. You have now linked your first checkpoint to your new Trail! To learn more about trails, see Trails overview.
+</pasted_content id="5694">
+
+ help me run this step but ive already done some stuff on entire
