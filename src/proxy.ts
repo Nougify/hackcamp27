@@ -1,8 +1,9 @@
-import { auth0 } from './lib/auth0';
+import { auth0, authDisabled } from './lib/auth0';
 
 // Next.js 16 replaces middleware.ts with proxy.ts as the network interception
 // boundary (SPEC.md §3.2, §17 item 7).
 export async function proxy(request: Request) {
+  if (authDisabled) return;
   return await auth0.middleware(request);
 }
 

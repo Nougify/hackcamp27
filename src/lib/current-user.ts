@@ -1,5 +1,5 @@
 import 'server-only';
-import { auth0 } from './auth0';
+import { auth0, authDisabled } from './auth0';
 import sql from './db';
 import { UnauthorizedError } from './errors';
 
@@ -21,12 +21,23 @@ interface UserRow {
   tz: string;
 }
 
+/** Local dev without Auth0 (see `authDisabled`); same id as main's old placeholder. */
+const DEV_USER: AppUser = {
+  id: '00000000-0000-4000-8000-000000000001',
+  auth0Sub: 'dev|local',
+  email: 'demo@mise.local',
+  displayName: 'Demo cook',
+  avatarUrl: null,
+  tz: 'America/Vancouver',
+};
+
 /**
  * First line of every route handler (SPEC.md §7). Upserts the Auth0 session's
  * `sub` into `users` (never merges by email — SPEC.md §5.2) and returns our
  * own user row. Throws UnauthorizedError, caught by `handleRouteError`.
  */
 export async function requireUser(): Promise<AppUser> {
+  if (authDisabled) return DEV_USER;
   const session = await auth0.getSession();
   if (!session) throw new UnauthorizedError('No active session');
 
