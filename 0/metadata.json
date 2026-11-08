@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6XQK9BHTGG0HR8Y9DRHD6DS",
+  "session_id": "08115fb0-bc0f-4bb4-b56e-b53e891bccae",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T14:04:37.1445462Z",
+  "branch": "jerry/vertex-global",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "README.md",
+    "SPEC.md",
+    "gemini-issues.md",
+    "scripts/gemini-smoke.mjs"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "257c6ba45b1c",
+  "checkpoint_transcript_start": 502,
+  "transcript_lines_at_start": 502,
+  "compact_transcript_start": 65,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "redaction": {
+    "replacements": 23,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 21,
+      "credentialed_uri": 0,
+      "entropy": 4,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 7
+  }
+}
