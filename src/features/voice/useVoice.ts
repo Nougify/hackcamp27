@@ -106,9 +106,11 @@ export function createVoicePlayer(): VoicePlayer & { dispose(): void } {
 
     stop() {
       token++;
+      // Only interrupt real playback, so a speak() right after unlock() doesn't cancel the unlock clip.
+      if (!speaking) return;
       audio.pause();
       speechSynthesis.cancel();
-      if (speaking) emit(false, null);
+      emit(false, null);
     },
 
     prefetch(raw) {

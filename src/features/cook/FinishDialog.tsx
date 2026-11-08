@@ -15,10 +15,10 @@ const BASIS_LABEL = {
 type Line = DeductionLine & { checked: boolean; qty: string };
 
 /** A line the user can deduct: matched to a pantry item with a known unit. */
-const deductible = (l: DeductionLine) =>
+export const deductible = (l: DeductionLine) =>
   l.pantryItemId !== null && l.dim !== null && (l.status === "ok" || l.status === "clamped" || l.status === "unconvertible");
 
-function toLines(p: FinishPreview): Line[] {
+export function toLines(p: FinishPreview): Line[] {
   return p.deductions.map((d) => ({
     ...d,
     // Unconvertible lines start unchecked and empty: the user enters the amount ("Adjust manually").
@@ -39,11 +39,13 @@ export function FinishDialog({
   servingsPlanned: number;
   open: boolean;
   onClose: () => void;
-  onFinished: (r: FinishResult) => void;
+  /** null = the session was already finished elsewhere (409). */
+  onFinished: (r: FinishResult | null) => void;
 }) {
   const [servingsCooked, setServingsCooked] = useState(servingsPlanned);
   const [servingsEaten, setServingsEaten] = useState(1);
-  const [preview, setPreview] = useState<FinishPreview | null>(null);
+  // The plan remembers which servings count it was built for; Confirm needs it to match.
+  const [plan, setPlan] = useState<{ servings: number; preview: FinishPreview } | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [kcal, setKcal] = useState("");
   const [protein, setProtein] = useState("");
@@ -58,7 +60,7 @@ export function FinishDialog({
       getFinishPreview(sessionId, servingsCooked)
         .then((p) => {
           if (cancelled) return;
-          setPreview(p);
+          setPlan({ servings: servingsCooked, preview: p });
           setLines(toLines(p));
           setKcal(String(Math.round(p.suggestedLogPerServing.kcal)));
           setProtein(String(Math.round(p.suggestedLogPerServing.proteinG)));
@@ -77,6 +79,7 @@ export function FinishDialog({
   const kcalN = Number(kcal);
   const proteinN = Number(protein);
   const nutritionValid = kcal !== "" && protein !== "" && kcalN >= 0 && proteinN >= 0;
+  const preview = plan?.servings === servingsCooked ? plan.preview : null; // null while re-planning or after a failed load
   const valid = preview !== null && (servingsEaten === 0 || nutritionValid);
 
   async function confirm() {
@@ -96,12 +99,9 @@ export function FinishDialog({
       });
       onFinished(result);
     } catch (e) {
+      if (e instanceof ApiRequestError && e.status === 409) return onFinished(null);
       setSaving(false);
-      setError(
-        e instanceof ApiRequestError && e.status === 409
-          ? "This session was already finished."
-          : "Couldn't save. Nothing was changed, so you can try again.",
-      );
+      setError("Couldn't save. Nothing was changed, so you can try again.");
     }
   }
 
@@ -115,7 +115,7 @@ export function FinishDialog({
       <h3 className="mt-6 text-lg font-semibold">Remove from pantry</h3>
       {!preview && !error && <p className="mt-2 text-muted">Working out what you used…</p>}
       <ul className="mt-2 divide-y divide-line">
-        {lines.map((l, i) => (
+        {(preview ? lines : []).map((l, i) => (
           <li key={`${l.ingredientRaw}-${i}`} className="flex flex-wrap items-center gap-3 py-3">
             {deductible(l) ? (
               <>

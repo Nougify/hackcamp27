@@ -266,16 +266,20 @@ function Cooking({ view }: { view: CookSessionView }) {
   };
 
   // Finish (SPEC F14 / UF8): the server transaction is done; release everything and go to Today.
-  const finished = (r: FinishResult) => {
+  const finished = (r: FinishResult | null) => {
+    sentStep.current = stepRef.current; // session is closed: the unmount flush must not PATCH it
     voice?.stop();
     setHandsFree(false);
     wake.release();
     clearCook(session.id);
-    const m = r.mealLog;
+    const m = r?.mealLog;
+    const n = m?.servings ?? 1;
     toast(
-      m
-        ? `Logged ${m.servings ?? 1} serving${m.servings === 1 ? "" : "s"} · ${Math.round(m.kcal)} kcal · ${Math.round(m.proteinG)} g protein`
-        : "Pantry updated",
+      !r
+        ? "This session was already finished"
+        : m
+          ? `Logged ${n} serving${n === 1 ? "" : "s"} · ${Math.round(m.kcal)} kcal · ${Math.round(m.proteinG)} g protein`
+          : "Pantry updated",
     );
     router.push("/today");
   };
@@ -401,6 +405,7 @@ function Cooking({ view }: { view: CookSessionView }) {
           config={prefs.gesture}
           showCamera={prefs.showCamera}
           announce={say}
+          paused={finishOpen || settingsOpen}
           onExit={() => setHandsFree(false)}
         />
       )}
