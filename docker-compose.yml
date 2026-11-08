@@ -2,6 +2,9 @@ services:
   web:
     build: .
     env_file: .env.production
+    # Vertex AI auth (ADC): service-account key with the Vertex AI User role, kept out of git.
+    environment: { GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json }
+    volumes: ["./gcp-sa.json:/run/secrets/gcp-sa.json:ro"]
     restart: unless-stopped
     expose: ["3000"]
   caddy:

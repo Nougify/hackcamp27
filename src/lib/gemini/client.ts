@@ -6,7 +6,11 @@ import { getEnv } from '../env';
 let client: GoogleGenAI | null = null;
 
 function getClient(): GoogleGenAI {
-  if (!client) client = new GoogleGenAI({ apiKey: getEnv().GEMINI_API_KEY });
+  // Vertex AI via Application Default Credentials (`gcloud auth application-default login` locally).
+  if (!client) {
+    const env = getEnv();
+    client = new GoogleGenAI({ vertexai: true, project: env.GOOGLE_CLOUD_PROJECT, location: env.GOOGLE_CLOUD_LOCATION });
+  }
   return client;
 }
 

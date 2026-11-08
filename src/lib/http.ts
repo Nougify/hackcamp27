@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { ApiError as GenAIError } from '@google/genai';
 import type { ApiError, ApiErrorCode } from '@/contracts/api';
 import {
   ConflictError,
@@ -25,6 +26,10 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Path ids go straight into SQL; a malformed one should be a 404, not a Postgres 500. */
 export const isUuid = (id: string) => uuid.test(id);
 
+const QUOTA_MESSAGE = 'The AI service is out of quota right now. Try again in a minute.';
+/** Gemini returns HTTP 429 when the project's quota is used up. */
+const isGeminiQuota = (err: unknown) => err instanceof GenAIError && err.status === 429;
+
 export function jsonOk<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }
@@ -49,6 +54,7 @@ export function handleRouteError(err: unknown): NextResponse<ApiError> {
     return res;
   }
   if (err instanceof ZodError) return jsonErrorFromZod(err);
+  if (isGeminiQuota(err)) return jsonError('RATE_LIMITED', QUOTA_MESSAGE);
   console.error(err);
   return jsonError('INTERNAL', 'Something went wrong');
 }
@@ -81,7 +87,9 @@ export function ndjsonResponse<T>(
       } catch (err) {
         write({
           type: 'error',
-          error: { code: 'INTERNAL', message: err instanceof Error ? err.message : 'Unknown error' },
+          error: isGeminiQuota(err)
+            ? { code: 'RATE_LIMITED', message: QUOTA_MESSAGE }
+            : { code: 'INTERNAL', message: err instanceof Error ? err.message : 'Unknown error' },
         } as T);
       } finally {
         if (!abort.signal.aborted) controller.close();
