@@ -90,3 +90,11 @@ Decision (team): **keep the `Allergen` enum unchanged** and document the mapping
 - Per-serving labels stay `basis: 'serving'` in the API. The client converts to per-100 when it fills the form, and drops the numbers if no serving weight was read.
 - `proxy.ts` makes Next buffer at most 10 MB of a body, so the vision routes answer 413 above 10 MB total even though 3 x 4 MB is 12 MB. Client downscaling keeps real uploads far below that. `experimental.proxyClientMaxBodySize` in next.config.ts would lift it.
 - Gemini label and expiry reading is tested with mocks only: the Gemini API was down during this work. Run F3 AC1-3 and F4 AC3-5 on real photos once it is back.
+
+## Nutrition notes (johnny/nutrition, 2026-11-08)
+
+- Team decisions: an item or product with no calorie data can't be logged (missing protein alone counts as 0); deleting a meal never changes the pantry; the 7-day chart shows calories with a goal line, protein in the tooltip and table.
+- A pantry deduction larger than the stock is clamped to the stock, matching finish-cooking. The meal still records what was eaten.
+- `DELETE /api/meals/:id` matches `eaten_at` within its millisecond: rows from the database's `now()` have microseconds and JS dates don't.
+- A meal back-dated into an already-materialized day reaches the 7-day chart only after the next aggregate refresh (15 minutes at most). The UI only logs meals at the current time, and "today" comes from the real-time part of the aggregate.
+- History days are bucketed in America/Vancouver (migration 0002). For users elsewhere the rings (their local day) and chart can differ near midnight; SPEC §5.3 accepts this.

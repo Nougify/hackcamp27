@@ -1,14 +1,12 @@
 import { requireUser } from '@/lib/current-user';
 import { handleRouteError, jsonOk } from '@/lib/http';
-import { dailyTotalsFixture } from '@/contracts/fixtures';
+import { getTodayTotals } from '@/server/nutrition/daily';
 
 export const runtime = 'nodejs';
 
-// Phase 0 stub (owner: B).
 export async function GET() {
   try {
-    await requireUser();
-    return jsonOk(dailyTotalsFixture);
+    return jsonOk(await getTodayTotals(await requireUser()));
   } catch (err) {
     return handleRouteError(err);
   }
