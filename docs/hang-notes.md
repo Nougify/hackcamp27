@@ -66,5 +66,5 @@ Verified: `npm run typecheck` ✓, `npm run lint` (0 errors) ✓, `npm test` (26
 1. ADC + `GOOGLE_CLOUD_PROJECT` → run `node scripts/gemini-smoke.mjs`, then `npm run dev` search for real.
 2. Tiger service (`mise-db`) + fork (`mise-test`) → `DATABASE_URL`, `DATABASE_URL_TEST` → `npm run migrate`, `npm run test:db`.
 3. Auth0 tenant URLs (callback/logout/origins) for localhost + production (§10.7).
-4. Vultr VPS + domain (or sslip.io) → `.env.production` (chmod 600) → compose up → `/api/health`.
+4. Vultr VPS + domain (or sslip.io) → `.env.production` (chmod 600) + `gcp-sa.json` service-account key (Vertex AI User, chmod 600) next to docker-compose.yml → compose up → `/api/health`.
 5. Decisions: §17 items 2 (terms), 10 (step text), 3 (model latency test).
