@@ -4,6 +4,7 @@ import type { SpeechEngine, VoicePlayer } from "@/contracts";
 export function createBrowserVoicePlayer(): VoicePlayer {
   const cbs = new Set<(speaking: boolean, engine: SpeechEngine | null) => void>();
   let speaking = false;
+  let current: SpeechSynthesisUtterance | null = null;
   const set = (s: boolean) => {
     speaking = s;
     cbs.forEach((cb) => cb(s, s ? "browser" : null));
@@ -14,12 +15,15 @@ export function createBrowserVoicePlayer(): VoicePlayer {
     async speak(text) {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.onend = u.onerror = () => set(false);
+      current = u;
+      // A cancelled utterance fires onerror later; only the current one may clear `speaking`.
+      u.onend = u.onerror = () => u === current && set(false);
       speechSynthesis.speak(u);
       set(true);
       return "browser";
     },
     stop() {
+      current = null;
       speechSynthesis.cancel();
       set(false);
     },

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-/** Native <dialog> modal: focus trap, Esc and backdrop come from the browser. */
+/** Native <dialog> modal. `open` is the source of truth; onClose fires only for Esc or a backdrop click. */
 export function Dialog({
   open,
   onClose,
@@ -28,7 +28,10 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      onCancel={(e) => {
+        e.preventDefault(); // Esc: let the parent decide via `open`
+        onClose();
+      }}
       onClick={(e) => e.target === ref.current && onClose()}
       aria-label={title}
       className={`m-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-0 text-ink ${className}`}

@@ -16,9 +16,12 @@ export function AppNav() {
   if (path.startsWith("/cook")) return null;
 
   return (
+    <>
+    {/* Spacer so page content clears the fixed bottom bar on phones. */}
+    <div aria-hidden className="h-14 md:hidden" />
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface md:static md:border-b md:border-t-0"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface md:static md:order-first md:border-b md:border-t-0"
     >
       <div className="mx-auto flex max-w-5xl items-center px-2 md:px-6">
         <Link href="/today" className="mr-6 hidden font-display text-xl font-semibold md:block">Mise</Link>
@@ -39,5 +42,6 @@ export function AppNav() {
         })}
       </div>
     </nav>
+    </>
   );
 }

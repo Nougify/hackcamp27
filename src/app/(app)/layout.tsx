@@ -5,8 +5,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   await requireUser();
   return (
     <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col">{children}</div>
       <AppNav />
-      <div className="flex flex-1 flex-col pb-20 md:pb-0">{children}</div>
     </div>
   );
 }
