@@ -68,9 +68,12 @@ export function isBlockedIp(ip: string): boolean {
     const first = clean.split(':')[0]!;
     if (/^fe[89ab]/.test(first) || first === 'fec0') return true; // link-local fe80::/10, site-local
     if (/^(fc|fd)/.test(first)) return true; // unique-local fc00::/7
-    if (clean.startsWith('::ffff:')) {
-      const v4 = ipv4ToInt(clean.slice('::ffff:'.length));
-      if (v4 != null) return isBlockedIp(intToIpv4(v4));
+    // IPv4 embedded in IPv6: mapped (::ffff:), compatible (::a.b.c.d) and NAT64 (64:ff9b::).
+    // URL parsing rewrites ::ffff:127.0.0.1 as ::ffff:7f00:1, so accept dotted and hex forms.
+    const embedded = /^(?:::ffff:|::|64:ff9b::)(.+)$/.exec(clean)?.[1];
+    if (embedded != null) {
+      const v4 = embeddedIpv4(embedded);
+      return v4 == null ? true : isBlockedIp(intToIpv4(v4)); // unparseable → block
     }
     return false;
   }
@@ -88,6 +91,14 @@ export function isBlockedIp(ip: string): boolean {
     inCidr(n, '224.0.0.0', 4) || // multicast
     inCidr(n, '240.0.0.0', 4) // reserved / broadcast
   );
+}
+
+/** '127.0.0.1' or '7f00:1' (last 32 bits in hex) → integer; null if neither. */
+function embeddedIpv4(s: string): number | null {
+  const dotted = ipv4ToInt(s);
+  if (dotted != null) return dotted;
+  const m = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(s);
+  return m ? ((parseInt(m[1]!, 16) << 16) | parseInt(m[2]!, 16)) >>> 0 : null;
 }
 
 function intToIpv4(n: number): string {
@@ -168,9 +179,9 @@ export async function safeFetchHtml(rawUrl: string, opts: SafeFetchOptions = {})
     // Connect only to the IP we just validated; TLS SNI/cert still use the hostname from the URL.
     const dispatcher = new Agent({ connect: { lookup: pinnedLookup(address.address, address.family) } });
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
       let res: Response;
       try {
         res = await fetch(url.toString(), {
@@ -184,8 +195,6 @@ export async function safeFetchHtml(rawUrl: string, opts: SafeFetchOptions = {})
           err instanceof Error && err.name === 'AbortError' ? 'timeout' : 'network',
           `Fetch failed for ${url.hostname}: ${err instanceof Error ? err.message : 'unknown'}`,
         );
-      } finally {
-        clearTimeout(timer);
       }
 
       if (res.status >= 300 && res.status < 400) {
@@ -213,7 +222,13 @@ export async function safeFetchHtml(rawUrl: string, opts: SafeFetchOptions = {})
       const chunks: Uint8Array[] = [];
       let total = 0;
       for (;;) {
-        const { done, value } = await reader.read();
+        let chunk: Awaited<ReturnType<typeof reader.read>>;
+        try {
+          chunk = await reader.read();
+        } catch {
+          throw new SafeFetchError(controller.signal.aborted ? 'timeout' : 'network', `Reading ${url.hostname} failed`);
+        }
+        const { done, value } = chunk;
         if (done) break;
         total += value.byteLength;
         if (total > maxBytes) {
@@ -225,6 +240,7 @@ export async function safeFetchHtml(rawUrl: string, opts: SafeFetchOptions = {})
       const text = Buffer.concat(chunks).toString('utf8');
       return { finalUrl: url.toString(), status: res.status, contentType, text };
     } finally {
+      clearTimeout(timer); // covers headers AND body: a server dripping bytes still times out
       void dispatcher.close().catch(() => {});
     }
   }

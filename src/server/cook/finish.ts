@@ -3,6 +3,7 @@ import sql from '@/lib/db';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { estimateRecipeNutrition, suggestLogPerServing } from '@/server/nutrition/recipe';
 import { matchIngredients } from '@/server/recipes/match';
+import { pantryForMatching, type PantryRow } from '@/server/recipes/pantry-view';
 import type { FinishRequest, FinishResult } from '@/contracts/api';
 import type { CookingSession, MealLog, Nutrients, RecipeIngredient, RecipeStep, Substitution } from '@/contracts/domain';
 
@@ -68,56 +69,11 @@ export async function finishSession(userId: string, sessionId: string, input: Fi
         ? ((variant.ingredients as RecipeIngredient[]) ?? [])
         : (((variant.ingredients as Array<{ parsed: RecipeIngredient }>) ?? []).map((i) => i.parsed));
 
-    const pantryRows = await tx<
-      Array<{
-        id: string;
-        name: string;
-        normalized_name: string;
-        dim: 'mass' | 'volume' | 'count';
-        quantity_base: string | number;
-        display_unit: string;
-        grams_per_unit: string | number | null;
-        density_g_per_ml: string | number | null;
-        expiry_date: string | Date | null;
-        nutrition_basis: '100g' | '100ml' | 'unit';
-        kcal_per_basis: string | number | null;
-        protein_g_per_basis: string | number | null;
-        carbs_g_per_basis: string | number | null;
-        fat_g_per_basis: string | number | null;
-      }>
-    >`SELECT id, name, normalized_name, dim, quantity_base, display_unit, grams_per_unit, density_g_per_ml,
-       expiry_date, nutrition_basis, kcal_per_basis, protein_g_per_basis, carbs_g_per_basis, fat_g_per_basis
-       FROM pantry_items WHERE user_id = ${userId}`;
-
-    const pantry = pantryRows.map((r) => ({
-      id: r.id,
-      gtin: null,
-      name: r.name,
-      normalizedName: r.normalized_name,
-      brand: null,
-      dim: r.dim,
-      quantityBase: Number(r.quantity_base),
-      displayUnit: r.display_unit as 'g',
-      quantityDisplay: '',
-      gramsPerUnit: r.grams_per_unit == null ? null : Number(r.grams_per_unit),
-      densityGPerMl: r.density_g_per_ml == null ? null : Number(r.density_g_per_ml),
-      expiryDate: null,
-      expirySource: null,
-      daysToExpiry: null,
-      nutritionBasis: r.nutrition_basis,
-      nutrition: {
-        energyKcal: r.kcal_per_basis == null ? null : Number(r.kcal_per_basis),
-        proteinG: r.protein_g_per_basis == null ? null : Number(r.protein_g_per_basis),
-        carbohydrateG: r.carbs_g_per_basis == null ? null : Number(r.carbs_g_per_basis),
-        fatG: r.fat_g_per_basis == null ? null : Number(r.fat_g_per_basis),
-      },
-      perServing: null,
-      servingSizeBase: null,
-      allergenTags: [],
-      source: 'manual' as const,
-      userVerified: true,
-      updatedAt: new Date().toISOString(),
-    }));
+    // Same view as the finish preview (FEFO, no expired items), read inside the transaction.
+    const users = await tx<Array<{ tz: string }>>`SELECT tz FROM users WHERE id = ${userId} LIMIT 1`;
+    const tz = users[0]?.tz ?? 'America/Vancouver';
+    const pantryRows = await tx<PantryRow[]>`SELECT * FROM pantry_items WHERE user_id = ${userId}`;
+    const pantry = pantryForMatching(pantryRows, tz, new Date(), 200);
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
     const matches = matchIngredients(parsed, pantry);
@@ -151,12 +107,11 @@ export async function finishSession(userId: string, sessionId: string, input: Fi
 
     let mealLog: MealLog | null = null;
     if (input.servingsEaten > 0) {
-      const users = await tx<Array<{ tz: string }>>`SELECT tz FROM users WHERE id = ${userId} LIMIT 1`;
       const eatenAt = new Date();
       const inserted = await tx<Array<{ id: string; eaten_at: Date }>>`
         INSERT INTO meal_logs (user_id, local_date, source, cooking_session_id, recipe_variant_id, label, servings, kcal, protein_g, carbs_g, fat_g)
         VALUES (
-          ${userId}, ${localDateInTz(users[0]?.tz ?? 'America/Vancouver', eatenAt)}, 'cooking_session',
+          ${userId}, ${localDateInTz(tz, eatenAt)}, 'cooking_session',
           ${sessionId}, ${session.recipe_variant_id}, ${recipe.title}, ${input.servingsEaten},
           ${perServing.kcal * input.servingsEaten}, ${perServing.proteinG * input.servingsEaten}, NULL, NULL
         )
@@ -166,7 +121,7 @@ export async function finishSession(userId: string, sessionId: string, input: Fi
       mealLog = {
         id: logRow.id,
         eatenAt: logRow.eaten_at.toISOString(),
-        localDate: localDateInTz(users[0]?.tz ?? 'America/Vancouver', eatenAt),
+        localDate: localDateInTz(tz, eatenAt),
         source: 'cooking_session',
         label: recipe.title,
         servings: input.servingsEaten,

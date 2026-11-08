@@ -21,6 +21,10 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   INTERNAL: 500,
 };
 
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Path ids go straight into SQL; a malformed one should be a 404, not a Postgres 500. */
+export const isUuid = (id: string) => uuid.test(id);
+
 export function jsonOk<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }

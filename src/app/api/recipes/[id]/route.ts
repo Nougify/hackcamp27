@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/current-user';
-import { handleRouteError, jsonError, jsonOk } from '@/lib/http';
+import { handleRouteError, isUuid, jsonError, jsonOk } from '@/lib/http';
 import { checkDiet } from '@/server/diet/check';
 import { estimateRecipeNutrition } from '@/server/nutrition/recipe';
 import { matchIngredients } from '@/server/recipes/match';
@@ -15,6 +15,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const user = await requireUser();
     const { id } = await ctx.params;
+    if (!isUuid(id)) return jsonError('NOT_FOUND', 'Recipe not found');
     const detail = await getRecipeDetail(user.id, id);
     if (!detail) return jsonError('NOT_FOUND', 'Recipe not found');
 

@@ -1,7 +1,7 @@
 import { requireUser } from '@/lib/current-user';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { ConflictError, RateLimitedError } from '@/lib/errors';
-import { handleRouteError, jsonError, jsonOk } from '@/lib/http';
+import { handleRouteError, isUuid, jsonError, jsonOk } from '@/lib/http';
 import { estimateRecipeNutrition } from '@/server/nutrition/recipe';
 import { matchIngredients } from '@/server/recipes/match';
 import { findMatchingAdaptation, getRecipeDetail, insertAdaptation } from '@/server/recipes/store';
@@ -15,10 +15,9 @@ export const runtime = 'nodejs';
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireUser();
-    const limit = checkRateLimit(user.id, 'recipes/adapt');
-    if (!limit.ok) throw new RateLimitedError('Too many adaptations', limit.retryAfterMs);
 
     const { id } = await ctx.params;
+    if (!isUuid(id)) return jsonError('NOT_FOUND', 'Recipe not found');
     const detail = await getRecipeDetail(user.id, id);
     if (!detail) return jsonError('NOT_FOUND', 'Recipe not found');
 
@@ -48,6 +47,9 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       return jsonOk(body);
     }
 
+    // Only a real Gemini call spends a token (not 404s, 409s or cached adaptations).
+    const limit = checkRateLimit(user.id, 'recipes/adapt');
+    if (!limit.ok) throw new RateLimitedError('Too many adaptations', limit.retryAfterMs);
     const built = await requestAdaptation(detail.original, missingRaws, pantry, { diets, allergens });
     const parsed = built.ingredients.map((i) => i.parsed);
     const nutrition = estimateRecipeNutrition({

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { requireUser } from '@/lib/current-user';
-import { handleRouteError, jsonError, jsonErrorFromZod, jsonOk } from '@/lib/http';
+import { handleRouteError, isUuid, jsonError, jsonErrorFromZod, jsonOk } from '@/lib/http';
 import { getSessionView, updateSession } from '@/server/cook/sessions';
 
 export const runtime = 'nodejs';
@@ -14,6 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const user = await requireUser();
     const { id } = await ctx.params;
+    if (!isUuid(id)) return jsonError('NOT_FOUND', 'Cooking session not found');
     const view = await getSessionView(user.id, id);
     if (!view) return jsonError('NOT_FOUND', 'Cooking session not found');
     return jsonOk(view);
@@ -26,6 +27,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   try {
     const user = await requireUser();
     const { id } = await ctx.params;
+    if (!isUuid(id)) return jsonError('NOT_FOUND', 'Cooking session not found');
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonErrorFromZod(parsed.error);
     return jsonOk(await updateSession(user.id, id, parsed.data));

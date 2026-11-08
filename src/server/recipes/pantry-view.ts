@@ -3,7 +3,7 @@ import sql from '@/lib/db';
 import { formatQty } from '@/lib/units';
 import type { DisplayUnit, Nutrients, PantryItem, UnitDim } from '@/contracts/domain';
 
-interface PantryRow {
+export interface PantryRow {
   id: string;
   gtin: string | null;
   name: string;
@@ -108,7 +108,13 @@ export async function listPantryForMatching(
     WHERE user_id = ${userId} AND quantity_base > 0
     ORDER BY expiry_date NULLS LAST, normalized_name
   `;
+  return pantryForMatching(rows, tz, now, limit);
+}
+
+/** Matching view of pantry rows: in stock, not expired, soonest expiry first (FEFO). Shared with finish. */
+export function pantryForMatching(rows: PantryRow[], tz: string, now = new Date(), limit = 25): PantryItem[] {
   return rows
+    .filter((row) => Number(row.quantity_base) > 0)
     .map((row) => rowToPantryItem(row, tz, now))
     .filter((item) => item.daysToExpiry == null || item.daysToExpiry >= 0)
     .sort((a, b) => (a.daysToExpiry ?? 9999) - (b.daysToExpiry ?? 9999))

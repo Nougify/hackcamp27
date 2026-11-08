@@ -59,6 +59,21 @@ describe('isBlockedIp: extra reserved ranges', () => {
   );
 });
 
+describe('isBlockedIp: IPv4 embedded in IPv6', () => {
+  it.each([
+    '::ffff:7f00:1', // ::ffff:127.0.0.1 as the URL parser rewrites it
+    '::ffff:a9fe:a9fe', // ::ffff:169.254.169.254 (cloud metadata)
+    '::ffff:127.0.0.1',
+    '[::ffff:7f00:1]',
+    '::127.0.0.1', // IPv4-compatible
+    '64:ff9b::7f00:1', // NAT64
+    '::ffff:zzzz', // unparseable embedded → block
+  ])('blocks %s', (ip) => expect(isBlockedIp(ip)).toBe(true));
+  it('allows a mapped public address', () => expect(isBlockedIp('::ffff:5db8:d822')).toBe(false)); // 93.184.216.34
+  it('the URL parser really produces the hex form', () =>
+    expect(new URL('http://[::ffff:127.0.0.1]/').hostname).toBe('[::ffff:7f00:1]'));
+});
+
 describe('pinnedLookup (DNS rebinding guard)', () => {
   it('answers the validated address for any hostname, in both callback forms', () => {
     const lookup = pinnedLookup('93.184.216.34', 4);
@@ -127,6 +142,15 @@ describe('safeFetchHtml against a local fixture server (allowPrivate)', () => {
 
   afterEach(async () => {
     await new Promise((resolve) => server?.close(resolve));
+  });
+
+  it('times out a server that sends headers and then drips the body', async () => {
+    await start((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      const t = setInterval(() => res.write('<p>'), 50);
+      res.on('close', () => clearInterval(t));
+    });
+    await expect(safeFetchHtml(`${base}/drip`, { allowPrivate: true, timeoutMs: 300 })).rejects.toMatchObject({ code: 'timeout' });
   });
 
   it('returns html and the final URL', async () => {
