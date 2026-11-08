@@ -88,13 +88,14 @@ export async function deleteUserData(userId: string): Promise<void> {
   const [{ first }] = await sql<{ first: Date | null }[]>`SELECT min(eaten_at) AS first FROM meal_logs WHERE user_id = ${userId}`;
   const result = await sql`DELETE FROM users WHERE id = ${userId}`;
   if (result.count === 0) throw new NotFoundError('User not found');
-  if (!first) return;
 
-  // Whole buckets only, and buckets are local days, so widen the window past both ends.
-  const from = new Date(first.getTime() - 2 * DAY_MS).toISOString();
-  const to = new Date(Date.now() + 2 * DAY_MS).toISOString();
+  // Only what the policy won't revisit (it overlaps by a day). Refreshing recent buckets would
+  // materialize today's and advance the watermark, hiding new meals from real-time results.
+  const to = new Date(Date.now() - 29 * DAY_MS);
+  if (!first || first >= to) return;
+  const from = new Date(first.getTime() - 2 * DAY_MS);
   try {
-    await sql`CALL refresh_continuous_aggregate('daily_nutrition', ${from}::timestamptz, ${to}::timestamptz)`;
+    await sql`CALL refresh_continuous_aggregate('daily_nutrition', ${from.toISOString()}::timestamptz, ${to.toISOString()}::timestamptz)`;
   } catch (err) {
     // The account is already gone, so a retry would 404; log it for an operator to re-run.
     console.error('[delete-user] daily_nutrition refresh failed', err);
