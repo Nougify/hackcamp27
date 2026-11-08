@@ -1,0 +1,9 @@
+clear
+
+---
+
+I'll change the UI be ready
+
+---
+
+[Image #1] Chefly needs to be a little bigger. [Image #2] needs to be bigger and the 286 numbers needs to be more rapproche, [Image #3] same here [Image #4] the dropdown there s an arrow that is a little bit of,maybe don'T show it or make it cleaner[Image #5] for image 5, the optional can be next to Brand and the input box can be at the same level as the one beside making it cleaner.[Image #6] dropbox arrow again [Image #7] same here[Image #8] can you add a little margin from the left so that the text doesn't hug really close to the left boundary screen [Image #9] in /cook/... the setting logo is too small compared to the text that surrounds it. [Image #10] if you have, make it green, it'S more rewarding to the human eye. [Image #11] in settings can you make the rectangle, make it less rounded like rectnagle but rounded a little bit that's it for now, don't change the functionality of the features, just the UI
