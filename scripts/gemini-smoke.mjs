@@ -9,7 +9,7 @@ if (!project) {
   console.error('GOOGLE_CLOUD_PROJECT is required');
   process.exit(1);
 }
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1'; // same fallback as src/lib/env.ts;
 const model = process.env.GEMINI_MODEL ?? 'gemini-3.8-flash';
 const searchModel = process.env.GEMINI_SEARCH_MODEL ?? 'gemini-3.8-flash';
 const ai = new GoogleGenAI({ vertexai: true, project, location });

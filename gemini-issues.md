@@ -29,7 +29,7 @@ console.info(`[gemini] vertex project=${env.GOOGLE_CLOUD_PROJECT} location=${env
 
 Then check `docker compose logs web | grep gemini`.
 
-`.env.example` and `scripts/gemini-smoke.mjs` already use `global`, and the README tells everyone to set it.
+`.env.example` and the README already say to set `global`. Also change the fallback in `scripts/gemini-smoke.mjs` to `global` in the same commit (it mirrors `src/lib/env.ts` so the smoke test catches a missing setting).
 
 ### Fix 2: check the server (works without a deploy)
 
