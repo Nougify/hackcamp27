@@ -1,4 +1,4 @@
-import type { DisplayUnit, Nutrients, UnitDim } from '@/contracts/domain';
+import type { DisplayUnit, Nutrients, PantryItem, Product, UnitDim } from '@/contracts/domain';
 import { DISPLAY_UNITS, convertBetween, toBase, unitDim } from '@/lib/units';
 
 // SPEC F15: turning "170 g of this item" into calories, and into a pantry deduction. Pure, so the
@@ -11,6 +11,14 @@ export interface FoodSource {
   stockDim: UnitDim | null;
   gramsPerUnit: number | null;
   densityGPerMl: number | null;
+}
+
+export function itemSource(item: PantryItem): FoodSource {
+  return { basis: item.nutritionBasis, nutrition: item.nutrition, stockDim: item.dim, gramsPerUnit: item.gramsPerUnit, densityGPerMl: item.densityGPerMl };
+}
+
+export function productSource(product: Product): FoodSource {
+  return { basis: product.basis, nutrition: product.per100, stockDim: null, gramsPerUnit: null, densityGPerMl: null };
 }
 
 export interface MealNutrition {
@@ -61,13 +69,13 @@ export function nutritionForAmount(source: FoodSource, amount: number, unit: Dis
   };
 }
 
-/** Units this food can be logged in: convertible to its nutrition basis and to its stock. */
-export function loggableUnits(source: FoodSource): DisplayUnit[] {
+/** Units this food can be logged in: convertible to its nutrition basis and, when deducting, to its stock. */
+export function loggableUnits(source: FoodSource, deducting = true): DisplayUnit[] {
   const basisDim = BASIS[source.basis].dim;
   return DISPLAY_UNITS.filter((u) => {
     const dim = unitDim(u);
     if (convertBetween(1, dim, basisDim, source) === null) return false;
-    return source.stockDim === null || convertBetween(1, dim, source.stockDim, source) !== null;
+    return !deducting || source.stockDim === null || convertBetween(1, dim, source.stockDim, source) !== null;
   });
 }
 

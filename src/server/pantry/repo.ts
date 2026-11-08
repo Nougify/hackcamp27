@@ -43,6 +43,9 @@ export interface PantryItemRow {
   updated_at: Date;
 }
 
+/** quantity_base is numeric(12,3). */
+const MAX_QUANTITY_BASE = 1_000_000_000;
+
 const num = (v: number | string | null | undefined): number | null => (v == null ? null : Number(v));
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
@@ -122,6 +125,7 @@ export async function getPantryItemForUser(userId: string, id: string, tz: strin
 function baseQuantity(quantity: number, unit: DisplayUnit): { dim: UnitDim; qtyBase: number } {
   const b = toBase(quantity, unit);
   if (!b) throw new UnprocessableError(`Unknown unit "${unit}"`);
+  if (b.qtyBase >= MAX_QUANTITY_BASE) throw new UnprocessableError('That quantity is too large.');
   return b;
 }
 
@@ -217,7 +221,9 @@ export async function updatePantryItem(
     } else if (input.quantity !== undefined) {
       newBase = baseQuantity(input.quantity, unit).qtyBase;
     }
-    if (newBase !== oldBase) set.quantity_base = newBase;
+    // Compared at column scale: converting through a display unit can add floating-point noise.
+    const quantityChanged = Math.round(newBase * 1000) !== Math.round(oldBase * 1000);
+    if (quantityChanged) set.quantity_base = newBase;
 
     if (input.name !== undefined || input.brand !== undefined) {
       const name = input.name ?? cur.name;
@@ -258,7 +264,7 @@ export async function updatePantryItem(
       WHERE id = ${id} AND user_id = ${userId}
       RETURNING *
     `;
-    if (newBase !== oldBase) {
+    if (quantityChanged) {
       await logEvent(tx, userId, id, input.adjustReason === 'discard' ? 'discard' : 'manual_adjust', newBase - oldBase);
     }
     return updated;

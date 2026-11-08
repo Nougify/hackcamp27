@@ -3,6 +3,17 @@ import { normalizeIngredientName } from '@/server/recipes/parse';
 import { detectAllergens, pantryAllergenTags } from './allergens';
 import { addDays, daysBetween, daysUntil, isIsoDate, todayInTz } from './dates';
 import { normalizePantryName, stripBrandAndSize } from './normalize';
+import { createPantryItemSchema } from './validation';
+
+describe('createPantryItemSchema', () => {
+  const body = { name: 'Oats', quantity: 1, displayUnit: 'kg', nutritionBasis: '100g', source: 'manual', userVerified: true };
+  const nutrition = { energyKcal: 1_000_000, proteinG: null, carbohydrateG: null, fatG: null };
+
+  it('rejects a nutrient that would overflow its column', () => {
+    expect(createPantryItemSchema.safeParse({ ...body, nutrition }).success).toBe(false);
+    expect(createPantryItemSchema.safeParse({ ...body, nutrition: { ...nutrition, energyKcal: 389 } }).success).toBe(true);
+  });
+});
 
 describe('stripBrandAndSize', () => {
   it('removes each comma-separated brand phrase as whole words', () => {

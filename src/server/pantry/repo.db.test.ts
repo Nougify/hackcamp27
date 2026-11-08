@@ -167,6 +167,20 @@ describe('updatePantryItem', () => {
   });
 });
 
+describe('quantity limits and precision', () => {
+  it('rejects a quantity that overflows the column as a validation error', async () => {
+    const u = await makeUser();
+    await expect(createPantryItem(u, TZ, item({ quantity: 2_000_000, displayUnit: 'kg' }))).rejects.toBeInstanceOf(UnprocessableError);
+  });
+
+  it('logs nothing when a unit round trip only adds floating-point noise', async () => {
+    const u = await makeUser();
+    const x = await createPantryItem(u, TZ, item({ quantity: 100, displayUnit: 'g' }));
+    await updatePantryItem(u, x.id, TZ, { quantity: 100.0000001, displayUnit: 'g' });
+    expect(await events(x.id)).toEqual([{ kind: 'add', delta_base: 100 }]);
+  });
+});
+
 describe('restockPantryItem', () => {
   it('refills an empty row to its initial quantity, clears expiry, logs add', async () => {
     const u = await makeUser();
@@ -247,6 +261,19 @@ describe('profile', () => {
     expect(c).toEqual({ users: 0, pantry: 0, events: 0, meals: 0 });
     await expect(deleteUserData(u)).rejects.toBeInstanceOf(NotFoundError);
     await expect(getProfile(u)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('delete my data removes materialized daily_nutrition older than the refresh window', async () => {
+    const u = await makeUser();
+    const old = new Date(Date.now() - 60 * 86_400_000);
+    await tsql`INSERT INTO meal_logs (eaten_at, user_id, local_date, source, label, kcal) VALUES (${old.toISOString()}, ${u}, ${old.toISOString().slice(0, 10)}, 'manual', 'Old snack', 120)`;
+    const from = new Date(old.getTime() - 2 * 86_400_000).toISOString();
+    const to = new Date(old.getTime() + 2 * 86_400_000).toISOString();
+    await tsql`CALL refresh_continuous_aggregate('daily_nutrition', ${from}::timestamptz, ${to}::timestamptz)`;
+    const count = async () => (await tsql<{ n: number }[]>`SELECT count(*)::int AS n FROM daily_nutrition WHERE user_id = ${u}`)[0].n;
+    expect(await count()).toBe(1);
+    await deleteUserData(u);
+    expect(await count()).toBe(0);
   });
 
   it('delete my data works for a user who has cooked (session-linked meals and events)', async () => {
