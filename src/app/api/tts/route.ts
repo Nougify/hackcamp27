@@ -35,7 +35,7 @@ export async function POST(req: Request) {
         method: "POST",
         headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
         body: JSON.stringify({ text: parsed.data.text, model_id: model }),
-        signal: ctrl.signal,
+        signal: AbortSignal.any([ctrl.signal, req.signal]), // client gave up → stop paying upstream
       },
     );
   } catch {

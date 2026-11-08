@@ -25,10 +25,13 @@ export function normalizeForSpeech(text: string): string {
   s = s.replace(/°/g, " degrees");
 
   // 2 tbsp / 1 tsp / 200g → spelled-out unit, singular for exactly one (or a lone fraction)
-  s = s.replace(new RegExp(String.raw`(${NUM})\s*(${Object.keys(UNITS).join("|")})\.?(?![\w])`, "gi"), (_, n: string, u: string) => {
+  // A "." after the unit is an abbreviation dot ("1 tbsp. butter") unless a new sentence follows ("50 g. Then").
+  const unitRe = new RegExp(String.raw`(${NUM})\s*(${Object.keys(UNITS).join("|")})(\.)?(?![\w])`, "gi");
+  s = s.replace(unitRe, (m: string, n: string, u: string, dot: string | undefined, at: number, all: string) => {
     const [one, many] = UNITS[u.toLowerCase()];
     const singular = n === "1" || /^\d+\/\d+$/.test(n);
-    return `${n} ${singular ? one : many}`;
+    const endsSentence = dot !== undefined && !/^\s*[a-z]/.test(all.slice(at + m.length));
+    return `${n} ${singular ? one : many}${endsSentence ? "." : ""}`;
   });
 
   // 1 1/2 → 1 and one half; 1/2 → one half

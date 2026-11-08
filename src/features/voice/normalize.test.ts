@@ -11,6 +11,7 @@ describe("normalizeForSpeech", () => {
     ["Preheat to 200 °C (400°F).", "Preheat to 200 degrees Celsius (400 degrees Fahrenheit)."],
     ["Add 2 tbsp oil", "Add 2 tablespoons oil"],
     ["Add 1 tbsp. butter", "Add 1 tablespoon butter"],
+    ["Add 50 g. Then stir", "Add 50 grams. Then stir"],
     ["Add 1 tsp cumin", "Add 1 teaspoon cumin"],
     ["Add 200g spinach", "Add 200 grams spinach"],
     ["Pour in 120 ml buttermilk", "Pour in 120 millilitres buttermilk"],

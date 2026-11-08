@@ -5,11 +5,22 @@ import type { SpeechEngine, VoicePlayer } from "@/contracts";
 import { normalizeForSpeech } from "./normalize";
 
 const FIRST_BYTE_MS = 1500;
-// 0.1 s of silence; played inside the "Start cooking" tap to satisfy autoplay policy.
-const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
+/** 0.1 s of 8-bit 8 kHz silence as a WAV blob URL; played in the "Start cooking" tap (autoplay policy). */
+function silentWavUrl(): string {
+  const n = 800;
+  const b = new DataView(new ArrayBuffer(44 + n));
+  const str = (o: number, s: string) => [...s].forEach((ch, i) => b.setUint8(o + i, ch.charCodeAt(0)));
+  str(0, "RIFF"); b.setUint32(4, 36 + n, true); str(8, "WAVEfmt ");
+  b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 8000, true); b.setUint32(28, 8000, true); b.setUint16(32, 1, true); b.setUint16(34, 8, true);
+  str(36, "data"); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([b.buffer], { type: "audio/wav" }));
+}
 
 /** ElevenLabs via /api/tts with an in-memory cache, falling back to speechSynthesis (SPEC F13). */
-export function createVoicePlayer(): VoicePlayer {
+export function createVoicePlayer(): VoicePlayer & { dispose(): void } {
   const audio = new Audio();
   // ponytail: keyed by normalized text (voice/model are fixed server-side per deploy); hash if keys get large.
   const cache = new Map<string, Promise<string | null>>();
@@ -61,18 +72,23 @@ export function createVoicePlayer(): VoicePlayer {
     return "browser";
   }
 
-  const player: VoicePlayer = {
+  const player: VoicePlayer & { dispose(): void } = {
     async unlock() {
-      audio.src = SILENT_WAV;
+      // Prime speechSynthesis too: iOS only allows it after it has spoken once inside a gesture.
+      speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      const url = silentWavUrl();
+      audio.src = url;
       await audio.play().catch(() => {});
+      URL.revokeObjectURL(url);
     },
 
     async speak(raw) {
       player.stop();
       const my = ++token;
       const text = normalizeForSpeech(raw);
+      emit(true, null); // "speaking" while loading, so a second toggle cancels instead of restarting
       const url = await fetchAudio(text);
-      if (my !== token) return url ? "elevenlabs" : "browser"; // stopped while loading
+      if (my !== token) return url ? "elevenlabs" : "browser"; // stopped while loading (stop() already emitted)
       if (!url) return speakBrowser(text, my);
       audio.src = url;
       audio.onended = audio.onerror = () => my === token && emit(false, null);
@@ -104,6 +120,12 @@ export function createVoicePlayer(): VoicePlayer {
       cbs.add(cb);
       return () => void cbs.delete(cb);
     },
+
+    dispose() {
+      player.stop();
+      for (const p of cache.values()) void p.then((url) => url && URL.revokeObjectURL(url));
+      cache.clear();
+    },
   };
   return player;
 }
@@ -112,19 +134,15 @@ export function createVoicePlayer(): VoicePlayer {
 export function useVoice() {
   const [player] = useState(() => (typeof window === "undefined" ? null : createVoicePlayer()));
   const [engine, setEngine] = useState<SpeechEngine | null>(null);
-  const [speaking, setSpeaking] = useState(false);
 
   useEffect(() => {
     if (!player) return;
-    const off = player.onChange((s, e) => {
-      setSpeaking(s);
-      if (e) setEngine(e);
-    });
+    const off = player.onChange((_, e) => e && setEngine(e));
     return () => {
       off();
-      player.stop();
+      player.dispose();
     };
   }, [player]);
 
-  return { player, engine, speaking };
+  return { player, engine };
 }

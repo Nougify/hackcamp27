@@ -229,7 +229,8 @@ function Cooking({ view }: { view: CookSessionView }) {
   const start = (resume: SavedCook | null) => {
     unlockAudio();
     void voice?.unlock();
-    voice?.prefetch(steps[resume?.stepIndex ?? 0].text);
+    const first = steps[Math.min(resume?.stepIndex ?? 0, steps.length - 1)];
+    if (first) voice?.prefetch(first.text);
     void wake.request();
     if (resume) dispatch({ type: "restore", stepIndex: resume.stepIndex, timers: resume.timers });
     else {
