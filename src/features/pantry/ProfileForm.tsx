@@ -11,6 +11,15 @@ import { ALLERGENS, ALLERGEN_LABELS, DIETS, DIET_LABELS } from './labels';
 // edits the display name and the grace period (team decision 2026-11-08).
 
 const inputClass = 'min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-ink';
+const selectClass = 'min-h-11 w-full appearance-none rounded-xl border border-line bg-surface pl-3 pr-9 text-ink';
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const chevronStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
 
 // Time zones and the device zone come from the browser's Intl data, which differs from Node's, so
 // they're read through useSyncExternalStore with a server snapshot of null (hydration-safe).
@@ -159,7 +168,7 @@ export function ProfileForm({
         <label htmlFor="tz" className="font-semibold">
           Time zone
         </label>
-        <select id="tz" className={inputClass} value={tz} onChange={(e) => setTz(e.target.value)}>
+        <select id="tz" className={selectClass} style={chevronStyle} value={tz} onChange={(e) => setTz(e.target.value)}>
           {zones.map((z) => (
             <option key={z} value={z}>
               {z.replaceAll('_', ' ')}

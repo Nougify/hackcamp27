@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import type { CookingController, CookSessionView, FinishResult } from "@/contracts";
 import { Badge, Button, buttonClass, useToast } from "@/components/ui";
 import { GestureSettings, loadPrefs, savePrefs, type CookPrefs } from "@/features/gesture";
@@ -18,6 +18,10 @@ import { useWakeLock } from "./wake-lock";
 
 // MediaPipe + camera load only when hands-free is switched on (SPEC §11.5).
 const GestureController = dynamic(() => import("@/features/gesture/GestureController"), { ssr: false });
+
+// Status chips (Voice, Screen stays on) read calmer next to the Hands-free button at this size,
+// and stay neutral so they don't compete with it for the same accent colour.
+const CHIP_STYLE: CSSProperties = { padding: "0.4rem 0.8rem", fontSize: "0.8125rem" };
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; view: CookSessionView };
 
@@ -325,12 +329,20 @@ function Cooking({ view }: { view: CookSessionView }) {
               {recipe.isAdapted && <Badge tone="ai" className="ml-2">AI-adapted</Badge>}
             </p>
           </div>
-          {engine && <Badge className="hidden sm:inline-flex">Voice: {engine === "elevenlabs" ? "ElevenLabs" : "Device"}</Badge>}
-          {wake.supported && wake.held && <Badge tone="accent" className="hidden sm:inline-flex">Screen stays on</Badge>}
+          {engine && (
+            <Badge className="hidden sm:inline-flex" style={CHIP_STYLE}>
+              Voice: {engine === "elevenlabs" ? "ElevenLabs" : "Device"}
+            </Badge>
+          )}
+          {wake.supported && wake.held && (
+            <Badge className="hidden sm:inline-flex" style={CHIP_STYLE}>
+              Screen stays on
+            </Badge>
+          )}
           <Button variant={handsFree ? "primary" : "secondary"} aria-pressed={handsFree} onClick={() => setHandsFree((v) => !v)}>
             Hands-free
           </Button>
-          <Button variant="ghost" className="text-xl" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
+          <Button variant="ghost" className="text-3xl" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
           <Button variant="ghost" onClick={() => setFinishOpen(true)}>Finish</Button>
           <Button variant="ghost" onClick={exit}>Exit</Button>
         </div>

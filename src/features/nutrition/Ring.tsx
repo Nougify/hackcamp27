@@ -17,10 +17,15 @@ export function Ring({ label, value, goal, unit }: { label: string; value: numbe
   );
 
   if (goal == null) {
+    // No ring to fit inside here, so the number can run much bigger, with the unit sitting
+    // on its baseline instead of stacked underneath.
     return (
-      <div className="grid justify-items-center gap-2">
-        <div className="grid h-[132px] w-[132px] place-content-center justify-items-center">{center}</div>
-        <p className="text-sm font-semibold">{label}</p>
+      <div className="grid justify-items-center gap-2 py-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display text-6xl font-semibold leading-none tabular-nums">{shown}</span>
+          <span className="text-lg leading-none text-muted">{unit}</span>
+        </div>
+        <p className="mt-2 text-sm font-semibold">{label}</p>
         <p className="text-xs text-muted">No goal set</p>
       </div>
     );
