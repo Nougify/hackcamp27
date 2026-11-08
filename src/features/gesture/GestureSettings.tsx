@@ -7,6 +7,15 @@ import { DEFAULT_PREFS, type CookPrefs } from "./settings";
 const SENSITIVITY = { low: 0.8, normal: 0.7, high: 0.6 } as const; // minScore: higher sensitivity = lower bar
 const HOLD = { short: 500, normal: 800, long: 1200 } as const;
 
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const CHEVRON_STYLE = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
+
 const pick = <T extends Record<string, number>>(m: T, v: number) =>
   (Object.entries(m).reduce((best, [k, x]) => (Math.abs(x - v) < Math.abs(m[best] - v) ? k : best), Object.keys(m)[0]) as keyof T);
 
@@ -81,7 +90,8 @@ function Select<K extends string>({ value, options, onChange }: { value: K; opti
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as K)}
-      className="min-h-11 rounded-lg border border-line bg-surface px-3 text-ink"
+      className="min-h-11 appearance-none rounded-lg border border-line bg-surface pl-3 pr-9 text-ink"
+      style={CHEVRON_STYLE}
     >
       {(Object.entries(options) as [K, string][]).map(([k, label]) => (
         <option key={k} value={k}>{label}</option>

@@ -14,6 +14,15 @@ export type ScannedCode = Extract<BarcodeResult, { ok: true }>;
 const SCAN_INTERVAL_MS = 150;
 const INVALID = "That barcode doesn't look valid";
 
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const CHEVRON_STYLE = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
+
 type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
 
 function cameraError(err: unknown): string {
@@ -167,7 +176,8 @@ export function BarcodeScanner({ onCode, notice, ignoreGtin = null }: { onCode: 
             <label className="flex items-center gap-2 text-sm">
               Camera
               <select
-                className="min-h-11 max-w-60 rounded-xl border border-line bg-surface px-3"
+                className="min-h-11 max-w-60 appearance-none rounded-xl border border-line bg-surface pl-3 pr-9"
+                style={CHEVRON_STYLE}
                 value={deviceId ?? ''}
                 onChange={(e) => setDeviceId(e.target.value || null)}
               >

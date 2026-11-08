@@ -22,6 +22,15 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 const inputClass = 'min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-ink';
+const selectClass = 'min-h-11 w-full appearance-none rounded-xl border border-line bg-surface pl-3 pr-9 text-ink';
+/** Native select arrow, rendered manually so it sits cleanly inside the rounded field. */
+const chevronStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23716354' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.75rem center',
+  backgroundSize: '1rem',
+} as const;
 const parse = (s: string) => (s.trim() === '' ? Number.NaN : Number(s.replace(',', '.')));
 
 function Problem({ children }: { children: React.ReactNode }) {
@@ -59,7 +68,7 @@ function AmountFields({
         </label>
         <label className="grid max-w-36 flex-1 gap-1 text-sm font-semibold">
           Unit
-          <select className={inputClass} value={unit} onChange={(e) => setUnit(e.target.value as DisplayUnit)}>
+          <select className={selectClass} style={chevronStyle} value={unit} onChange={(e) => setUnit(e.target.value as DisplayUnit)}>
             {units.map((u) => (
               <option key={u} value={u}>
                 {UNIT_LABELS[u]}
@@ -117,7 +126,8 @@ function FromPantry({ items, onDone }: { items: PantryItem[]; onDone: (label: st
       <label className="grid gap-1 text-sm font-semibold">
         Item
         <select
-          className={inputClass}
+          className={selectClass}
+          style={chevronStyle}
           value={item.id}
           onChange={(e) => {
             setId(e.target.value);

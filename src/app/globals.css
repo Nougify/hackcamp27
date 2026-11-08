@@ -76,6 +76,12 @@ body {
   font-weight: 800;
 }
 
+button:not(:disabled),
+select,
+[role="button"] {
+  cursor: pointer;
+}
+
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
