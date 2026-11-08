@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6XTMCAFY1W9MM4M9VN60PAP",
+  "strategy": "manual-commit",
+  "branch": "jerry/vertex-global",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/app/(app)/pantry/page.tsx",
+    "src/app/(app)/recipes/page.tsx",
+    "src/app/(app)/status/page.tsx",
+    "src/app/globals.css",
+    "src/app/layout.tsx",
+    "src/features/gesture/GestureController.tsx",
+    "src/features/nutrition/TodayClient.tsx",
+    "src/features/nutrition/chart.ts",
+    "src/features/pantry/PantryList.tsx",
+    "src/features/recipes/RecipeCard.tsx",
+    "src/features/recipes/SearchStream.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 30,
+    "cache_creation_tokens": 52069,
+    "cache_read_tokens": 985157,
+    "output_tokens": 7505,
+    "api_call_count": 14
+  },
+  "redaction": {
+    "replacements": 0,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

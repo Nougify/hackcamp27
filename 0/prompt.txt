@@ -1,0 +1,46 @@
+Please make the following changes to the UI and design:
+
+---
+
+d
+
+---
+
+- In general, remove sub headers that describe the feature to the user. - Make /recipes automatically search once for matching recipies and highlight found recipies that the user has all or enough ingredients to make. - Reformat /today, in particular, only the first box, containing calorie and protien values. Increase the size of the log food button here. - In /pantry remove the "include empty" tick and make unticked default and the only behavior. - The overall theme of the app should also be adjusted based on the following:
+
+<pasted_content id="44ab">
+/* src/app/globals.css — :root (light app) */
+--accent: #b83a09;
+--accent-ink: #fff8f1;
+--accent-soft: #fbe6da;
+--warn: #8a5a00;
+--warn-soft: #fbf1cf;
+--danger: #a1123f;
+--danger-soft: #fce7ee;
+
+/* src/app/globals.css — .theme-cook (dark cook mode) */
+--accent: #ff8a57;
+--accent-ink: #2a1206;
+--accent-soft: #3a2319;
+--danger: #ff7a9a;
+--danger-soft: #3d1c28;
+
+/* src/app/globals.css — @theme inline */
+--font-sans: var(--font-manrope);
+--font-display: var(--font-manrope);
+
+/* src/app/globals.css — add after the body rule, outside any @layer */
+body { font-weight: 500; }
+.font-display { font-weight: 800; }
+
+/* src/app/layout.tsx — replaces Fraunces and Inter */
+import { Manrope } from "next/font/google";
+const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
+/* <html className={`${manrope.variable} h-full antialiased`}> */
+
+/* Hardcoded greens that the tokens don't reach */
+/* src/features/nutrition/chart.ts:4 */
+CHART_COLOR = '#b83a09'
+/* src/features/gesture/GestureController.tsx:223 */
+ctx.fillStyle = "#ff8a57"
+</pasted_content id="44ab">
