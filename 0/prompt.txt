@@ -1,0 +1,5 @@
+is it already pushed ?
+
+---
+
+[Image #2] The numbers betwen 5,1 and 1 are too far, make them closer and cleaner please [Image #3] same for 1 and 9. [Image #4] did you add a timing func, where based on your laptop time if afternoon then it says great afternoon, then great evening
