@@ -1,6 +1,6 @@
 # Johnny: §17 answers and decisions (Workstream B + auth/DB foundation)
 
-These answers are for a human to copy into SPEC.md §17. Items still marked **Pending** need live credentials.
+These answers are for a human to copy into SPEC.md §17. All five items (4, 5, 6, 7, 11) are resolved as of 2026-11-08.
 
 ## §17 answers
 
@@ -50,7 +50,8 @@ The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `o
 - Signed-out `GET /api/pantry` returns **401** `{"error":{"code":"UNAUTHORIZED","message":"No active session"}}`. So the no-arg `getSession()` runs inside a route handler and returns null without a session.
 - Signed-out `GET /today` returns **307 → /auth/login**.
 - `/auth/login` returns **307 → https://nougify.ca.auth0.com/authorize** (PKCE S256, scope `openid profile email offline_access`, `redirect_uri=http://localhost:3000/auth/callback`).
-- **Still to do:** a real browser login, then `GET /api/me`, which needs the DB password fix. The `@auth0/nextjs-auth0@4.33.0` type docs say the no-arg `getSession()` works in App Router route handlers.
+- **Browser login (F1 AC2), verified 2026-11-08:** Google sign-in → sign-out → sign-in again against `mise-db`. Exactly **one** `users` row was created for the account (`auth0_sub` `google-oauth2|…`, email and name filled in, `tz` America/Vancouver, `onboarded_at` null). `last_seen_at` moved on the second login, and there are no duplicate `sub`s. So the session-backed `getSession()` and `requireUser()` upsert work in a real request.
+- `mise-db` also holds a second user, created earlier by another Google account (a teammate testing). Expected: the dev server writes to the shared `DATABASE_URL`.
 
 How sign-in is enforced on `dev`:
 - `src/proxy.ts` only runs `auth0.middleware()`, which mounts `/auth/*` and rolls sessions. It's skipped when `authDisabled`, i.e. outside production with no `AUTH0_DOMAIN`, where everyone is a demo user.
