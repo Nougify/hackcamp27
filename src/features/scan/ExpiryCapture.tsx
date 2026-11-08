@@ -69,7 +69,8 @@ export function ExpiryCapture({ onConfirm }: { onConfirm: (expiry: AppliedExpiry
         <div
           className="grid gap-4"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault();
+            // Skip the file input: Enter there must still open the picker.
+            if (e.key === 'Enter' && e.target instanceof HTMLInputElement && e.target.type !== 'file') e.preventDefault();
           }}
         >
           {result && <Badge tone="ai">Read by AI, please confirm</Badge>}
