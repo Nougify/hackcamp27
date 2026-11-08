@@ -7,7 +7,7 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Mise",
+  title: "Chefly",
   description: "Scan your groceries, cook what expires first, hands-free.",
 };
 
