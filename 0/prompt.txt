@@ -1,0 +1,104 @@
+<task-notification>
+<task-id>a74b18e30573edaf2</task-id>
+<tool-use-id>toolu_01PKaWueZSBieVd1f3ouDosz</tool-use-id>
+<output-file>C:\Users\hairy\AppData\Local\Temp\claude\34c662b52d2143e6\c8969496-5ab0-4072-87c4-3776a2c897ec\tasks\a74b18e30573edaf2.output</output-file>
+<status>completed</status>
+<summary>Agent "Rebase and refactor onto dev" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I rebased both branches onto `origin/dev` (b0aefb2) and refactored them to dev's conventions. Nothing is pushed.
+
+**Branches** (both rebuilt from `origin/dev`; old commits 5ca7552 / fb2eda7 are still reachable)
+- `johnny/foundation`, commit **9befcd6**: `src/lib/gtin.ts` + test, `src/lib/units.ts` + test, `src/lib/db.ts`, `src/instrumentation.ts` (new), `docs/johnny-verify.md`.
+- `johnny/contract-grace`, commit **0e148d7** (standalone `contract:` commit): `src/contracts/domain.ts`, `src/contracts/api.ts`, `db/migrations/0003_user_grace_days.sql`. Dev only has 0001/0002, so 0003 is free. The only `UserProfile` user is dev's `/api/me` stub, and it still typechecks because the field is optional.
+
+**Per file: kept from dev vs ported from mine**
+- **Dev's version kept unchanged:** `env.ts`, `auth0.ts`, `current-user.ts`, `proxy.ts`, `scripts/migrate.mjs`, migrations 0001/0002, `.env.example`, `vitest.config.mts`.
+  - Dev's migrations match SPEC; I dropped my no-transaction marker.
+  - Dev already has an `.env.example` and a `!.env.example` gitignore rule, so I dropped mine.
+- **Dropped my proxy 401 gate (a):** dev covers it. `requireUser()` throws `UnauthorizedError`, `handleRouteError` turns that into a 401 JSON, and `(app)/layout.tsx` redirects pages to `/auth/login`.
+- **Dropped my lazy-env code (d):** dev handles it with partial parsing during `NEXT_PHASE` build and in tests.
+- **`gtin.ts`:** new `normalizeBarcode(raw, format?)` with all the decided rules (separators, `non_numeric`, UPC-A, EAN-8 `lookupCode`, UPC-E, GTIN-14 indicator 0). Dev's `normalizeGtin(raw, format?)` keeps its `{ ok, gtin }` shape as a wrapper. Nothing outside `lib` called it.
+- **`gtin.test.ts`:** I changed one of dev's assertions. Its "GTIN-14 unchanged" case (`00036000291452`) contradicts the indicator-0 decision, so it now expects `0036000291452`, and I added an indicator-1 case that stays at 14 digits. My cases are appended.
+- **`units.ts`:** dev's API is kept. I added:
+  - own-property lookups (`constructor` / `__proto__` never match);
+  - finite checks;
+  - zero, negative or non-finite bridges treated as no bridge;
+  - more `parseUnit` aliases (T/t, fl oz variants, pcs aliases, cc, ltr, …);
+  - exports `isDisplayUnit`, `unitDim`, `unitsForDim`, `DISPLAY_UNITS`.
+  - **`formatQty` output is dev's, unchanged.**
+- **`db.ts` (c):** added parsers on top of dev's file: `numeric`/`int8` → number, `date` → `'YYYY-MM-DD'`, `timestamptz` stays a Date. I confirmed offline that only oids 1700/20/1082 are overridden. Every dev caller already uses `Number()` or accepts `string | Date`, so nothing breaks.
+- **`instrumentation.ts` (e):** calls `getEnv()` at server start.
+
+**APIs Workstream B code must now use**
+- **Env:** `import { getEnv } from '@/lib/env'`, then `getEnv().X`.
+  - During build and in tests it parses partially; in dev it only warns; in production it throws.
+- **Database:** `import sql from '@/lib/db'` (default export). Write dates to `date` columns as `'YYYY-MM-DD'` strings.
+- **`requireUser()`** returns `AppUser { id, auth0Sub, email, displayName, avatarUrl, tz }`.
+  - It has no diets, allergens or onboarded fields.
+  - With no session it throws `UnauthorizedError`.
+  - When `authDisabled` (not production and no `AUTH0_DOMAIN`) it returns a fixed demo user and seeds that user's row if `DATABASE_URL` is set.
+- **Route helpers (`@/lib/http`):** `jsonOk`, `jsonError(code, message, details?)`, `jsonErrorFromZod`, `handleRouteError`, `ndjsonResponse`, `isUuid`.
+  - The pattern is `try { … } catch (e) { return handleRouteError(e) }`.
+  - Error classes come from `@/lib/errors`: `UnauthorizedError`, `NotFoundError`, `ConflictError`, `RateLimitedError(msg, retryAfterMs)`, `UnprocessableError(msg, details?)`.
+- **Rate limits (`@/lib/rate-limit`):** `checkRateLimit(userId, route)` returns `{ ok, retryAfterMs }`. Route keys: `'products/lookup'` (30/min) and `'vision'` (10/min).
+- **Gemini (`@/lib/gemini/client`):** `geminiJson&lt;T&gt;({ system?, text, images?: GeminiImage[], jsonSchema, zod, model?, timeoutMs? })` returns `{ data, model }`.
+  - Vision schemas in `@/lib/gemini/schemas`: `labelJsonSchema`, `labelSchema`, `LabelExtraction`, `LABEL_SYSTEM_PROMPT`, `expiryJsonSchema`, `expirySchema`, `ExpiryExtraction`, `EXPIRY_SYSTEM_PROMPT`.
+- **Allergens (`@/server/diet/check`):** `ALLERGEN_KEYWORDS: Record&lt;Allergen, RuleDef&gt;` (`{ keywords, exceptions? }`), `DIET_KEYWORDS`, `checkDiet(lines: DietLine[], profile)`.
+- **`test:db`:** runs `node scripts/migrate.mjs --test`, then `vitest --mode db`. That mode runs only `*.db.test.ts`, loads `.env.local`, and sets `MISE_TEST_DB=1`, which makes `db.ts` connect to `DATABASE_URL_TEST`.
+- **`server-only` in vitest:** aliased to `test/stubs/server-only.ts`, so no mocking is needed.
+
+**Command results**
+- Baseline `origin/dev`: typecheck, lint, 370 tests all pass.
+- `johnny/foundation`: typecheck and lint pass; tests 435/435.
+  - `npm run build` passes with `.env.local` moved aside. A production `next start` with no env logs the missing variable names and "Failed to prepare server", but the process stayed alive until my 25 s timeout killed it.
+- `johnny/contract-grace`: typecheck and lint pass; tests 370/370; build passes without `.env.local`.
+
+An `.env.local` exists now, which the directive said wouldn't be there. I didn't read it. I moved it aside only for the two builds, and a trap restored it each time; it's back in place now.
+
+**Files outside my ownership I touched:** only `src/contracts/{domain,api}.ts`, for the planned contract commit.
+
+**Open questions for the user**
+1. **Migration 0002 transaction:** dev's `migrate.mjs` runs every file inside `sql.begin`. TimescaleDB may refuse to create the continuous aggregate and its policy inside a transaction. This needs a live run against the fork; if it fails, `migrate.mjs` needs a no-transaction path for 0002. I didn't change it.
+2. **`requireUser()` fields:** it doesn't return diets, allergens or onboarded. Should B add them (an additive change to `AppUser` and `DEV_USER`), or read them through a profile helper under `src/server/`?
+3. **`formatQty` output:** dev prints `l`, `pcs` even for 1, `cup` even for 2, and 2 decimals. My version printed `L`, `1 pc`, `2 cups` and context-dependent rounding. Changing it alters Hang's deduction strings and tests. Keep dev's?
+4. **Strict env checking:** dev's `getEnv()` doesn't enforce my stricter checks (`AUTH0_SECRET` ≥ 32 chars, `APP_BASE_URL` required in production, `DEFAULT_TZ` must be a valid IANA zone, `postgres://` URL format). Add them to dev's `env.ts`?
+5. **Dev's gtin test:** I changed its GTIN-14 assertion to match the indicator-0 decision. Hang or Jerry should be told.
+6. **Failed `next start` stays alive:** with bad env in production the process didn't exit, so Docker's `restart: unless-stopped` won't restart it. Acceptable, or should `instrumentation.ts` call `process.exit(1)`?</result>
+<usage><subagent_tokens>345314</subagent_tokens><tool_uses>124</tool_uses><duration_ms>650639</duration_ms></usage>
+</task-notification>
+
+---
+
+.env.local is now set with the credentials
+
+---
+
+Try again, the passwords should be good now.
+
+---
+
+<task-notification>
+<task-id>bxq41kefb</task-id>
+<tool-use-id>toolu_01M5R3zRobeocwnyL4Qipa6i</tool-use-id>
+<output-file>C:\Users\hairy\AppData\Local\Temp\claude\34c662b52d2143e6\c8969496-5ab0-4072-87c4-3776a2c897ec\tasks\bxq41kefb.output</output-file>
+<status>failed</status>
+<summary>Background command "Start Next dev server on port 3000" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+Okay, I've logged in and logged out twice.
+
+---
+
+<task-notification>
+<task-id>b96v7109r</task-id>
+<tool-use-id>toolu_01AvjGQJ9reQLEmKNAjXVYRG</tool-use-id>
+<output-file>C:\Users\hairy\AppData\Local\Temp\claude\34c662b52d2143e6\c8969496-5ab0-4072-87c4-3776a2c897ec\tasks\b96v7109r.output</output-file>
+<status>failed</status>
+<summary>Background command "Start Next dev server on port 3000" failed with exit code 127</summary>
+</task-notification>
+
+---
+
+later, when you push, push to a branch called johnny, do not forget to pull before pushing
