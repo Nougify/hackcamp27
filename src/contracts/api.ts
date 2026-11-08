@@ -8,6 +8,7 @@ export interface ApiError { error: { code: ApiErrorCode; message: string; detail
 // ── Profile ────────────────────────────────────────────────────────────────
 // GET  /api/me                → D.UserProfile
 // PATCH /api/me               → D.UserProfile
+// DELETE /api/me              → { ok: true }   deletes the users row (cascades to all of the user's data); client then logs out
 export interface UpdateMeRequest {
   displayName?: string;
   tz?: string;
@@ -82,6 +83,7 @@ export interface CreatePantryItemRequest {
 export type UpdatePantryItemRequest =
   Partial<Omit<CreatePantryItemRequest, 'source' | 'gtin'>> & { adjustReason?: 'manual_adjust' | 'discard' };
 // DELETE /api/pantry/:id                                → { ok: true }
+// POST /api/pantry/:id/restock   body: {}            → D.PantryItem   refill to the initial quantity, clear expiry, log pantry_events kind='add'
 
 // ── Recipes ────────────────────────────────────────────────────────────────
 // POST /api/recipes/search   → application/x-ndjson stream of RecipeSearchEvent (one JSON per line)
