@@ -1,0 +1,17 @@
+wait did we skip the auth0??? we should put it back in, and why aren'T we in main. all changes you should now merge to main is main is different and if you think that is the best
+
+---
+
+but why when I click sign in in were.cooking, it goes directly to https://now.were.cooking/today
+
+---
+
+create a logout button as well, modify the UI, make it professional, and implement the features as well
+
+---
+
+can't you merge? I give you the permission
+
+---
+
+ok i'll merge it myself give me a second
