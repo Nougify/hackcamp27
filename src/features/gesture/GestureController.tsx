@@ -70,12 +70,15 @@ export default function GestureController({
   config,
   showCamera,
   announce,
+  paused = false,
   onExit,
 }: {
   controller: CookingController;
   config: GestureConfig;
   showCamera: boolean;
   announce: (text: string) => void;
+  /** True while a dialog is open: gestures must not act on the cook view behind it. */
+  paused?: boolean;
   onExit: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -85,9 +88,9 @@ export default function GestureController({
   const [flash, setFlash] = useState(0);
   const [attempt, setAttempt] = useState(0);
   // Latest props for the long-lived action callback.
-  const latest = useRef({ controller, announce });
+  const latest = useRef({ controller, announce, paused });
   useEffect(() => {
-    latest.current = { controller, announce };
+    latest.current = { controller, announce, paused };
   });
 
   useEffect(() => {
@@ -100,7 +103,8 @@ export default function GestureController({
       if (DEBUG) drawLandmarks(canvas.current, src.landmarks);
     });
     const offAction = src.onAction((a) => {
-      const { controller: c, announce: say } = latest.current;
+      const { controller: c, announce: say, paused: isPaused } = latest.current;
+      if (isPaused) return;
       c.source = "gesture";
       if (a === "NEXT_STEP") c.nextStep();
       else if (a === "PREV_STEP") c.prevStep();

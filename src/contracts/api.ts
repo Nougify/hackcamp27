@@ -133,7 +133,7 @@ export interface DeductionLine {
   pantryItemName: string | null;
   proposedQtyBase: number | null;             // scaled by servingsCooked / variant.servings
   availableQtyBase: number | null;
-  dim: D.UnitDim | null;
+  dim: D.UnitDim | null;                      // the PANTRY item's dim (unit of availableQtyBase and of what /finish deducts), also on 'unconvertible' lines
   display: string;                            // 'Spinach: 150 g of 200 g → 50 g left'
   status: 'ok' | 'clamped' | 'unconvertible' | 'no_match' | 'staple';
 }
