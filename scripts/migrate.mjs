@@ -6,6 +6,11 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
 
+// Pick up .env.local like Next does (real env vars still win). Built into Node >= 21.7.
+try {
+  process.loadEnvFile(path.resolve(import.meta.dirname, '..', '.env.local'));
+} catch {}
+
 const useTest = process.argv.includes('--test');
 const url = useTest ? process.env.DATABASE_URL_TEST : process.env.DATABASE_URL;
 if (!url) {
