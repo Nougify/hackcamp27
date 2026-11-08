@@ -8,7 +8,7 @@ export default async function OnboardingPage() {
   if (profile.onboarded) redirect('/today');
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl font-semibold">Welcome to Mise</h1>
+      <h1 className="font-display text-3xl font-semibold">Welcome to Chefly</h1>
       <p className="mt-2 text-muted">
         Tell us how you eat. You can change all of this later in Settings.
       </p>
