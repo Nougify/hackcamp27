@@ -5,12 +5,14 @@ These answers are for a human to copy into SPEC.md §17. Items still marked **Pe
 ## §17 answers
 
 ### 4. dataandapis.com: not-found shape, token cost, sodium unit, carbs, plan
-**Pending:** no `DATAANDAPIS_KEY` yet. Once it's set:
-1. `GET https://api-barcode-lookup.dataandapis.com/v1/products/0000000000000` with `X-Api-Key`. Record the status and body.
-2. Call Nutella `3017620422003` and save the body as `src/server/products/__fixtures__/dataandapis.nutella.json`.
-3. Compare the dashboard token count before and after the miss to see whether misses cost a token.
-4. Check the `sodium` unit against OFF's `sodium_100g` for Nutella (OFF has 0.0428 g).
-5. Note the plan tier.
+**Verified 2026-11-08** (team key, 2 calls):
+- **Miss:** HTTP **404**, `{"ok":false,"message":"Product '0000000000000' not found","tried":["0000000000000","00000000","000000000000","00000000000000"]}`. The API retries re-paddings itself.
+- **Token cost:** the response header `ratelimit-requests-remaining` read **500 after the miss and 499 after the Nutella hit**, so a miss appears **not** to cost a token. Re-check on the dashboard if quota gets tight.
+- **Plan:** a full allowance of 500 means the **Free plan** (500 tokens/month). The products cache and negative cache are essential.
+- **Sodium:** `nutriments_per_100g.sodium` is **grams**. Nutella gives `0.043` against OFF's `0.0428 g`, and `salt` 0.107 ≈ sodium × 2.5. So `sodiumMg = sodium × 1000`.
+- **Carbs:** `carbohydrates` 57.5 equals OFF's `carbohydrates_100g`, i.e. as printed. Team decision: store as printed (EU labels exclude fibre).
+- **Fields seen:** `quantity` was `"400 g e"` (not null as the docs example showed), `serving_size` null, `allergens` `"Milk, Nuts, Soybeans"` (comma-separated English), `attribution {dataset, source:"Open Food Facts", source_url, licence:"ODbL v1.0"}`, `image_url`, `last_modified`, `completeness`.
+- Latency was 389–718 ms. The Nutella body is saved as the adapter fixture.
 
 The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `ok:false`, or a missing `name`. Errors are never negatively cached.
 
@@ -31,7 +33,7 @@ The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `o
 - **Staging data isn't realistic.** It holds test products for the GS1 example codes (`5901234123457` is "Pancakes"), and its Nutella has an empty `quantity`. Fixtures therefore come from a production read.
 
 ### 6. Tiger: TimescaleDB present, hypertable syntax, tz-aware time_bucket, real-time cagg, connection string, storage cap
-**Pending:** no Tiger services yet. Once `DATABASE_URL_TEST` (the fork) is set:
+**Blocked (2026-11-08):** both `DATABASE_URL` and `DATABASE_URL_TEST` in `.env.local` have **no password** (`postgres://tsdbadmin@host:port/tsdb?sslmode=require`), so connecting fails with `28P01 password authentication failed`. Add the password from the Tiger config download (URL-encode special characters). Then:
 1. `SELECT extname, extversion FROM pg_extension;` and confirm `timescaledb` is listed.
 2. `node scripts/migrate.mjs --test`. This checks that `WITH (tsdb.hypertable…)` accepts the composite PK and that `time_bucket(…, 'America/Vancouver')` works in the cagg.
 3. Insert a meal, then `SELECT * FROM daily_nutrition` right away to confirm real-time aggregation.
@@ -41,7 +43,11 @@ Migration design (dev's `scripts/migrate.mjs`, run with `npm run migrate` / `npm
 - **Open risk:** 0002 creates a continuous aggregate and its policy inside that transaction, and TimescaleDB may reject that ("cannot run inside a transaction block"). Verify on the fork first. If it fails, `migrate.mjs` needs a no-transaction path for 0002.
 
 ### 7. `auth0.getSession()` with no args in route handlers
-**Documented, not yet run.** The `@auth0/nextjs-auth0@4.33.0` type docs say the no-arg `getSession()` "can be used in Server Components, Server Actions, and Route Handlers in the **App Router**". I'll confirm at runtime once the Auth0 tenant exists.
+**Partly verified 2026-11-08** against the real tenant (`next dev`, no browser):
+- Signed-out `GET /api/pantry` returns **401** `{"error":{"code":"UNAUTHORIZED","message":"No active session"}}`. So the no-arg `getSession()` runs inside a route handler and returns null without a session.
+- Signed-out `GET /today` returns **307 → /auth/login**.
+- `/auth/login` returns **307 → https://nougify.ca.auth0.com/authorize** (PKCE S256, scope `openid profile email offline_access`, `redirect_uri=http://localhost:3000/auth/callback`).
+- **Still to do:** a real browser login, then `GET /api/me`, which needs the DB password fix. The `@auth0/nextjs-auth0@4.33.0` type docs say the no-arg `getSession()` works in App Router route handlers.
 
 How sign-in is enforced on `dev`:
 - `src/proxy.ts` only runs `auth0.middleware()`, which mounts `/auth/*` and rolls sessions. It's skipped when `authDisabled`, i.e. outside production with no `AUTH0_DOMAIN`, where everyone is a demo user.
