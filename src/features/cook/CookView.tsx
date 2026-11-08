@@ -1,10 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { CookingController, CookSessionView } from "@/contracts";
 import { Badge, Button, buttonClass } from "@/components/ui";
+import { GestureSettings, loadPrefs, savePrefs, type CookPrefs } from "@/features/gesture";
 import { useVoice } from "@/features/voice";
 import { askNotificationPermission, ringAlarm, unlockAudio } from "./alarm";
 import { getSession, patchSession } from "./api";
@@ -12,6 +14,9 @@ import { initCookState, makeCookReducer } from "./reducer";
 import { clearCook, loadCook, saveCook, type SavedCook } from "./resume";
 import { formatMs, parseDurationSeconds, timerMs } from "./timers";
 import { useWakeLock } from "./wake-lock";
+
+// MediaPipe + camera load only when hands-free is switched on (SPEC §11.5).
+const GestureController = dynamic(() => import("@/features/gesture/GestureController"), { ssr: false });
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; view: CookSessionView };
 
@@ -57,6 +62,13 @@ function Cooking({ view }: { view: CookSessionView }) {
   const reducer = useMemo(() => makeCookReducer(steps), [steps]);
   const [state, dispatch] = useReducer(reducer, session.currentStep, initCookState);
   const [started, setStarted] = useState(false);
+  const [handsFree, setHandsFree] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prefs, setPrefs] = useState<CookPrefs>(loadPrefs);
+  const updatePrefs = (p: CookPrefs) => {
+    setPrefs(p);
+    savePrefs(p);
+  };
   // Offer resume from localStorage (< 12 h), else from the server's currentStep.
   const [saved] = useState<SavedCook | null>(() => {
     const local = loadCook(session.id);
@@ -81,10 +93,12 @@ function Cooking({ view }: { view: CookSessionView }) {
   useEffect(() => voice?.onChange((speaking) => dispatch({ type: "speaking", speaking })), [voice]);
 
   // Warm the cache for the next step's audio (SPEC F13).
+  const usedVoice = useRef(false);
   useEffect(() => {
     const next = steps[state.stepIndex + 1];
-    if (started && next) voice?.prefetch(next.text);
-  }, [started, state.stepIndex, steps, voice]);
+    // Only spend TTS characters once read-aloud is actually in use.
+    if (started && next && (prefs.autoRead || usedVoice.current)) voice?.prefetch(next.text);
+  }, [started, state.stepIndex, steps, voice, prefs.autoRead]);
 
   // Persist on every change; debounce the server PATCH to 2 s (SPEC F11).
   useEffect(() => {
@@ -155,6 +169,9 @@ function Cooking({ view }: { view: CookSessionView }) {
     voice?.stop();
     say(`Step ${state.stepIndex + 1} of ${total}`);
     window.scrollTo({ top: 0 });
+    if (prefs.autoRead) void voice?.speak(steps[state.stepIndex].text);
+    // Only on step change: toggling auto-read shouldn't start reading.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.stepIndex, total, voice]);
 
   const controller: CookingController = useMemo(
@@ -170,7 +187,8 @@ function Cooking({ view }: { view: CookSessionView }) {
       scroll: (direction) => {
         poke();
         const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-        window.scrollBy({ top: (direction === "down" ? 0.4 : -0.4) * innerHeight, behavior: reduce ? "auto" : "smooth" });
+        const f = prefs.gesture.scrollFraction;
+        window.scrollBy({ top: (direction === "down" ? f : -f) * innerHeight, behavior: reduce ? "auto" : "smooth" });
       },
       toggleTimer: () => {
         poke();
@@ -182,11 +200,12 @@ function Cooking({ view }: { view: CookSessionView }) {
       toggleSpeak: () => {
         poke();
         if (!voice) return;
+        usedVoice.current = true;
         if (voice.speaking) voice.stop();
         else void voice.speak(step.text, { cacheKey: `${session.id}:${step.index}` });
       },
     }),
-    [poke, step, session.id, voice],
+    [poke, step, session.id, voice, prefs.gesture.scrollFraction],
   );
 
   // Announce timer start/pause for the current step.
@@ -215,6 +234,7 @@ function Cooking({ view }: { view: CookSessionView }) {
         " ": controller.toggleTimer,
         r: controller.toggleSpeak,
         R: controller.toggleSpeak,
+        Escape: () => setHandsFree(false),
       };
       const fn = map[e.key];
       if (!fn || e.repeat) return;
@@ -230,7 +250,7 @@ function Cooking({ view }: { view: CookSessionView }) {
     unlockAudio();
     void voice?.unlock();
     const first = steps[Math.min(resume?.stepIndex ?? 0, steps.length - 1)];
-    if (first) voice?.prefetch(first.text);
+    if (first && prefs.autoRead) voice?.prefetch(first.text);
     void wake.request();
     if (resume) dispatch({ type: "restore", stepIndex: resume.stepIndex, timers: resume.timers });
     else {
@@ -238,10 +258,13 @@ function Cooking({ view }: { view: CookSessionView }) {
       dispatch({ type: "restore", stepIndex: 0, timers: [] });
     }
     setStarted(true);
+    // If restore changes the step, the step-change effect reads it; otherwise read it here.
+    if (prefs.autoRead && first && first.index === state.stepIndex) void voice?.speak(first.text);
   };
 
   const exit = () => {
     voice?.stop();
+    setHandsFree(false);
     wake.release();
     router.push("/recipes");
   };
@@ -280,8 +303,12 @@ function Cooking({ view }: { view: CookSessionView }) {
               {recipe.isAdapted && <Badge tone="ai" className="ml-2">AI-adapted</Badge>}
             </p>
           </div>
-          {engine && <Badge>Voice: {engine === "elevenlabs" ? "ElevenLabs" : "Device"}</Badge>}
-          {wake.supported && wake.held && <Badge tone="accent">Screen stays on</Badge>}
+          {engine && <Badge className="hidden sm:inline-flex">Voice: {engine === "elevenlabs" ? "ElevenLabs" : "Device"}</Badge>}
+          {wake.supported && wake.held && <Badge tone="accent" className="hidden sm:inline-flex">Screen stays on</Badge>}
+          <Button variant={handsFree ? "primary" : "secondary"} aria-pressed={handsFree} onClick={() => setHandsFree((v) => !v)}>
+            Hands-free
+          </Button>
+          <Button variant="ghost" aria-label="Cook mode settings" onClick={() => setSettingsOpen(true)}>⚙</Button>
           <Button variant="ghost" onClick={exit}>Exit</Button>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
@@ -343,6 +370,16 @@ function Cooking({ view }: { view: CookSessionView }) {
         </div>
       </footer>
 
+      {handsFree && (
+        <GestureController
+          controller={controller}
+          config={prefs.gesture}
+          showCamera={prefs.showCamera}
+          announce={say}
+          onExit={() => setHandsFree(false)}
+        />
+      )}
+      <GestureSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} prefs={prefs} onChange={updatePrefs} />
       <div ref={live} aria-live="polite" className="sr-only" />
     </main>
   );
