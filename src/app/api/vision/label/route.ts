@@ -1,33 +1,37 @@
 import { requireUser } from '@/lib/current-user';
+import { RateLimitedError } from '@/lib/errors';
+import { geminiJson } from '@/lib/gemini/client';
+import { LABEL_SYSTEM_PROMPT, labelJsonSchema, labelSchema } from '@/lib/gemini/schemas';
 import { handleRouteError, jsonOk } from '@/lib/http';
-import type { LabelExtractionResponse } from '@/contracts/api';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { buildLabelResponse } from '@/server/vision/label';
+import { readImages, visionUnavailable } from '@/server/vision/upload';
 
 export const runtime = 'nodejs';
 
-// Phase 0 stub (owner: B).
-export async function POST() {
+// SPEC F3. Returns a draft only; nothing is saved until the user confirms the form.
+export async function POST(request: Request) {
   try {
-    await requireUser();
-    const body: LabelExtractionResponse = {
-      isFoodProduct: true,
-      draft: {
-        gtin: null,
-        name: 'Stub product (label photo)',
-        brand: null,
-        packageQuantity: { value: 500, unit: 'g' },
-        servingSize: null,
-        basis: '100g',
-        nutrients: { energyKcal: null, proteinG: null, carbohydrateG: null, fatG: null },
-        allergenTags: [],
-        source: 'gemini_photo',
-      },
-      flaggedFields: ['name'],
-      macrosConsistent: null,
-      confidence: 'low',
-      notes: 'Stub response — vision/label not implemented yet.',
-      model: 'stub',
-    };
-    return jsonOk(body);
+    const user = await requireUser();
+    const limit = checkRateLimit(user.id, 'vision');
+    if (!limit.ok) throw new RateLimitedError('Too many photos. Try again in a moment.', limit.retryAfterMs);
+
+    const upload = await readImages(request, 'images', 3);
+    if (!upload.ok) return upload.response;
+    const gtin = upload.form.get('gtin');
+
+    try {
+      const { data, model } = await geminiJson({
+        system: LABEL_SYSTEM_PROMPT,
+        text: 'Read this food product from its packaging and Nutrition Facts table.',
+        images: upload.images,
+        jsonSchema: labelJsonSchema,
+        zod: labelSchema,
+      });
+      return jsonOk(buildLabelResponse(data, model, typeof gtin === 'string' ? gtin : null));
+    } catch (err) {
+      return visionUnavailable(err);
+    }
   } catch (err) {
     return handleRouteError(err);
   }

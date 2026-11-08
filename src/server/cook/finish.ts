@@ -69,14 +69,17 @@ export async function finishSession(userId: string, sessionId: string, input: Fi
         ? ((variant.ingredients as RecipeIngredient[]) ?? [])
         : (((variant.ingredients as Array<{ parsed: RecipeIngredient }>) ?? []).map((i) => i.parsed));
 
-    // Same view as the finish preview (FEFO, no expired items), read inside the transaction.
-    const users = await tx<Array<{ tz: string }>>`SELECT tz FROM users WHERE id = ${userId} LIMIT 1`;
+    // Same view as the finish preview (FEFO, no expired-beyond-grace items), read inside the transaction.
+    const users = await tx<Array<{ tz: string; past_best_before_grace_days: number }>>`
+      SELECT tz, past_best_before_grace_days FROM users WHERE id = ${userId} LIMIT 1
+    `;
     const tz = users[0]?.tz ?? 'America/Vancouver';
+    const graceDays = users[0]?.past_best_before_grace_days ?? 0;
     const pantryRows = await tx<PantryRow[]>`
       SELECT * FROM pantry_items WHERE user_id = ${userId}
       ORDER BY expiry_date NULLS LAST, normalized_name
     `; // same order as the preview, so ties resolve to the same rows
-    const pantry = pantryForMatching(pantryRows, tz, new Date(), 200);
+    const pantry = pantryForMatching(pantryRows, tz, new Date(), 200, graceDays);
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
     const matches = matchIngredients(parsed, pantry);

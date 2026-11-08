@@ -24,7 +24,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const profile = await getProfileFilters(user.id);
     const diets = profile.diets as DietFlag[];
     const allergens = profile.allergens as Allergen[];
-    const pantry = await listPantryForMatching(user.id, profile.tz, new Date(), 200);
+    const pantry = await listPantryForMatching(user.id, profile.tz, new Date(), 200, profile.pastBestBeforeGraceDays);
     const pantryById = new Map(pantry.map((p) => [p.id, p]));
 
     const matches = matchIngredients(detail.original.ingredients, pantry);
