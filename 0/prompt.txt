@@ -1,0 +1,19 @@
+Are the findings listed somewhere in the branch?
+
+---
+
+Yes, add the findings doc and push to johnny
+
+---
+
+Pull from main then push then start a pr
+
+---
+
+<task-notification>
+<task-id>bw1ks7g2n</task-id>
+<tool-use-id>toolu_01977JKNqueSkbSbbyGPRgwZ</tool-use-id>
+<output-file>C:\Users\hairy\AppData\Local\Temp\claude\34c662b52d2143e6\dab2f091-9668-4576-bcce-174e4ce10341\tasks\bw1ks7g2n.output</output-file>
+<status>completed</status>
+<summary>Background command "Run required Entire review before committing the findings doc" completed (exit code 0)</summary>
+</task-notification>

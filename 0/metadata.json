@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6X7QCJ5CV3DFC9YKMFD32H2",
+  "session_id": "dab2f091-9668-4576-bcce-174e4ce10341",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T09:27:12.3314863Z",
+  "branch": "johnny/nutrition",
+  "checkpoints_count": 4,
+  "save_step_count": 1,
+  "files_touched": [
+    "docs/johnny-review-findings.md"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "631cf7db0feb",
+  "checkpoint_transcript_start": 329,
+  "transcript_lines_at_start": 329,
+  "compact_transcript_start": 35,
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 7756,
+    "cache_read_tokens": 1050732,
+    "output_tokens": 6273,
+    "api_call_count": 8
+  },
+  "redaction": {
+    "replacements": 2,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 8
+  }
+}
