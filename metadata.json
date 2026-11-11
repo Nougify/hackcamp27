@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M74CFN0S0H531N8WAGP3THM9",
+  "strategy": "manual-commit",
+  "branch": "merge-vertex-global",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".env.example",
+    "CLAUDE.md",
+    "README.md",
+    "SPEC.md",
+    "docs/hang-notes.md",
+    "docs/johnny-handoff.md",
+    "docs/johnny-verify.md",
+    "johnny.md",
+    "package-lock.json",
+    "package.json",
+    "src/app/globals.css",
+    "src/features/cook/resume.ts",
+    "src/features/gesture/settings.test.ts",
+    "src/features/gesture/settings.ts",
+    "src/lib/current-user.ts",
+    "src/lib/env.test.ts",
+    "src/server/products/products.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 64,
+    "cache_creation_tokens": 166357,
+    "cache_read_tokens": 2082158,
+    "output_tokens": 21053,
+    "api_call_count": 32
+  },
+  "redaction": {
+    "replacements": 2,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 2,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
