@@ -113,6 +113,52 @@ export const EXPIRY_SYSTEM_PROMPT = [
   'Always return raw_text.',
 ].join(' ');
 
+// ── Receipt extraction ──────────────────────────────────────────────────────
+
+export const receiptJsonSchema = {
+  type: 'object',
+  required: ['items', 'confidence'],
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'is_food_item'],
+        properties: {
+          name: { type: 'string' },
+          is_food_item: { type: 'boolean' },
+          quantity: { type: ['number', 'null'] },
+          unit: { type: ['string', 'null'], enum: ['g', 'kg', 'ml', 'l', 'oz', 'lb', 'fl_oz', 'count', null] },
+        },
+      },
+    },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    notes: { type: ['string', 'null'] },
+  },
+} as const;
+
+export const receiptSchema = z.object({
+  items: z.array(
+    z.object({
+      name: z.string(),
+      is_food_item: z.boolean(),
+      quantity: z.number().nullable().optional(),
+      unit: z.enum(['g', 'kg', 'ml', 'l', 'oz', 'lb', 'fl_oz', 'count']).nullable().optional(),
+    }),
+  ),
+  confidence: z.enum(['high', 'medium', 'low']),
+  notes: z.string().nullable().optional(),
+});
+export type ReceiptExtraction = z.infer<typeof receiptSchema>;
+
+export const RECEIPT_SYSTEM_PROMPT = [
+  'List every purchased line item printed on this grocery receipt, in the order printed.',
+  "Set is_food_item=true for groceries, drinks, snacks and prepared food. Set it false for household goods, " +
+    'bags, bottle/can deposits, tax, subtotal, total, tender/change, loyalty points and discount/coupon lines.',
+  'Only infer a quantity and unit when the line itself shows an explicit multiplier (e.g. "2 @ $1.99" → quantity 2, unit count, ' +
+    'or "1.36 kg @ ...") — otherwise leave both null. Never invent an item that is not printed on the receipt.',
+].join(' ');
+
 // ── Adaptation (§10.3.5) ────────────────────────────────────────────────────
 
 export const adaptationJsonSchema = {
