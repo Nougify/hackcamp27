@@ -54,7 +54,7 @@ export default async function Landing() {
           <span className="inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
             Hands-free cooking, zero waste
           </span>
-          <h1 className="mt-5 max-w-3xl font-display text-5xl font-semibold leading-tight sm:text-6xl">
+          <h1 className="mt-5 max-w-3xl font-display text-5xl font-semibold leading-tight tracking-tight sm:text-6xl">
             Chefly turns your pantry into dinner, before anything goes off.
           </h1>
           <p className="mt-6 max-w-xl text-lg text-muted">
@@ -74,7 +74,29 @@ export default async function Landing() {
         </dl>
       </div>
 
-      <div className="relative z-10 border-y border-line bg-surface-2/60 py-16">
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pb-16">
+        <div className="flex flex-col gap-6 rounded-2xl border border-line bg-surface-2 p-10 sm:flex-row sm:items-center sm:gap-10">
+          <div className="shrink-0">
+            <p className="font-display text-5xl font-semibold tracking-tight text-accent">140 kg</p>
+            <p className="mt-1 text-sm text-muted">wasted per Canadian household, every year</p>
+          </div>
+          <div className="hidden h-16 w-px bg-line sm:block" aria-hidden />
+          <div>
+            <p className="text-lg text-ink">
+              That&apos;s more than <span className="font-semibold">$1,300</span> in groceries thrown out a year, per the
+              National Zero Waste Council&apos;s benchmark study.
+            </p>
+            <a
+              href="https://lovefoodhatewaste.ca/about/food-waste/"
+              className="mt-2 inline-block text-sm text-accent hover:underline"
+            >
+              Source: Love Food Hate Waste Canada
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div id="how-it-works" className="relative z-10 border-y border-line bg-surface-2/60 py-16">
         <div className="mx-auto w-full max-w-5xl px-6">
           <h2 className="font-display text-3xl font-semibold">How it works</h2>
           <ol className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -94,7 +116,7 @@ export default async function Landing() {
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-16">
+      <div id="features" className="relative z-10 mx-auto w-full max-w-5xl px-6 py-16">
         <h2 className="font-display text-3xl font-semibold">Everything in one app</h2>
         <p className="mt-2 max-w-xl text-muted">No juggling a pantry app, a recipe site, and a nutrition tracker.</p>
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,8 +142,72 @@ export default async function Landing() {
         </div>
       </div>
 
-      <footer className="relative z-10 mx-auto w-full max-w-5xl border-t border-line px-6 py-6 text-xs text-muted">
-        Product data © Open Food Facts contributors, ODbL.
+      <footer className="relative z-10 border-t border-line bg-surface-2/60">
+        <div className="mx-auto w-full max-w-5xl px-6 py-14">
+          <div className="grid gap-10 sm:grid-cols-[1.4fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 21h16" />
+                    <path d="M5 21V8a7 7 0 0 1 14 0v13" />
+                    <path d="M5 12h14" />
+                  </svg>
+                </span>
+                <span className="font-display text-xl font-semibold tracking-tight">Chefly</span>
+              </div>
+              <p className="mt-3 max-w-xs text-sm text-muted">
+                Scan what you have, get recipes ranked by what&apos;s about to expire, and cook hands-free.
+              </p>
+              <span className="mt-4 inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
+                Built at HackCamp 2026
+              </span>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-ink">Product</h3>
+              <nav className="mt-3 grid gap-2 text-sm text-muted" aria-label="Product">
+                <a href="#how-it-works" className="w-fit hover:text-accent">
+                  How it works
+                </a>
+                <a href="#features" className="w-fit hover:text-accent">
+                  Features
+                </a>
+                <Link href="/pantry" className="w-fit hover:text-accent">
+                  Pantry
+                </Link>
+                <Link href="/recipes" className="w-fit hover:text-accent">
+                  Recipes
+                </Link>
+              </nav>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-ink">Account</h3>
+              <nav className="mt-3 grid gap-2 text-sm text-muted" aria-label="Account">
+                {signedIn ? (
+                  <Link href="/today" className="w-fit hover:text-accent">
+                    Open the app
+                  </Link>
+                ) : (
+                  <>
+                    <a href="/auth/login?returnTo=/today" className="w-fit hover:text-accent">
+                      Sign in
+                    </a>
+                    <a href="/auth/login?returnTo=/today" className="w-fit hover:text-accent">
+                      Get started free
+                    </a>
+                  </>
+                )}
+              </nav>
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-col gap-2 border-t border-line pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+            <span>&copy; {new Date().getFullYear()} Chefly</span>
+            <span>Product data © Open Food Facts contributors, ODbL.</span>
+          </div>
+        </div>
       </footer>
     </main>
   );

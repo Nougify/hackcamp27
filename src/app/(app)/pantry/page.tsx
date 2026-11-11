@@ -17,7 +17,7 @@ export default async function PantryPage() {
           graceDays={profile.pastBestBeforeGraceDays ?? 0}
           addSlot={
             <Link href="/pantry/add" className={buttonClass()}>
-              Scan barcode
+              Add items
             </Link>
           }
         />

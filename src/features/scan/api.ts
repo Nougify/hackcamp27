@@ -1,4 +1,4 @@
-import type { ExpiryExtractionResponse, LabelExtractionResponse, ProductLookupResponse } from '@/contracts/api';
+import type { ExpiryExtractionResponse, LabelExtractionResponse, ProductLookupResponse, ReceiptExtractionResponse } from '@/contracts/api';
 import { api } from '@/features/pantry/api';
 
 export const scanApi = {
@@ -15,5 +15,11 @@ export const scanApi = {
     const form = new FormData();
     form.append('image', photo, 'date.jpg');
     return api<ExpiryExtractionResponse>('/api/vision/expiry', { method: 'POST', body: form });
+  },
+
+  readReceipt: (photos: Blob[]) => {
+    const form = new FormData();
+    photos.forEach((p, i) => form.append('images', p, `receipt-${i}.jpg`));
+    return api<ReceiptExtractionResponse>('/api/vision/receipt', { method: 'POST', body: form });
   },
 };
