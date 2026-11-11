@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M74JN6EZ69DMTT0Q7NKQFXT9",
+  "strategy": "manual-commit",
+  "branch": "merge-vertex-global",
+  "checkpoints_count": 9,
+  "files_touched": [
+    "src/app/(app)/pantry/page.tsx",
+    "src/app/api/vision/receipt/route.ts",
+    "src/app/page.tsx",
+    "src/features/scan/AddProductFlow.tsx",
+    "src/features/scan/ReceiptReview.tsx",
+    "src/features/scan/api.ts",
+    "src/server/pantry/validation.ts",
+    "src/server/vision/receipt.test.ts",
+    "src/server/vision/receipt.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "redaction": {
+    "replacements": 2,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 2,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
