@@ -45,6 +45,15 @@ export interface LabelExtractionResponse {
   model: string;
 }
 
+// POST /api/vision/receipt  multipart/form-data: images (1–3 files, each ≤ 4 MB, jpeg/png/webp/heic)
+export interface ReceiptExtractionResponse {
+  items: D.ReceiptItemDraft[];   // food lines only — non-food already filtered out server-side
+  nonFoodCount: number;          // lines detected but excluded as non-food, for UI transparency
+  confidence: 'high' | 'medium' | 'low';
+  notes: string | null;
+  model: string;
+}
+
 // POST /api/vision/expiry  multipart/form-data: image (1 file ≤ 4 MB)
 export interface ExpiryExtractionResponse {
   rawText: string | null;

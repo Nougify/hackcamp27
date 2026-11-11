@@ -4,7 +4,7 @@ export type ISODateTime = string;   // RFC 3339
 
 export type UnitDim = 'mass' | 'volume' | 'count';
 export type DisplayUnit = 'g' | 'kg' | 'oz' | 'lb' | 'ml' | 'l' | 'tsp' | 'tbsp' | 'cup' | 'fl_oz' | 'pcs';
-export type ProductSource = 'dataandapis' | 'openfoodfacts' | 'gemini_photo' | 'manual';
+export type ProductSource = 'dataandapis' | 'openfoodfacts' | 'gemini_photo' | 'manual' | 'gemini_receipt';
 
 export type DietFlag = 'vegetarian' | 'vegan' | 'gluten_free' | 'dairy_free' | 'high_protein';
 // Product decision; aligned with Canada's priority allergens [VERIFY list against Health Canada]
@@ -67,6 +67,13 @@ export interface ProductDraft {
   nutrients: Nutrients;               // expressed in `basis`
   allergenTags: Allergen[];
   source: 'gemini_photo' | 'manual';
+}
+
+/** One parsed line item from a receipt photo, before the user reviews/edits it. */
+export interface ReceiptItemDraft {
+  name: string;
+  quantity: number | null;      // best-guess amount purchased; null if unreadable
+  displayUnit: DisplayUnit;     // best guess; 'pcs' when unclear
 }
 
 export interface PantryItem {

@@ -88,7 +88,7 @@ export const createPantryItemSchema = z
     ...pantryFields,
     quantity: positive,
     gtin: z.string().trim().max(20).nullable().optional(),
-    source: z.enum(['dataandapis', 'openfoodfacts', 'gemini_photo', 'manual']),
+    source: z.enum(['dataandapis', 'openfoodfacts', 'gemini_photo', 'manual', 'gemini_receipt']),
   })
   .strict()
   .refine(expiryConsistent, EXPIRY_MSG);
