@@ -122,8 +122,8 @@ export function AddProductFlow() {
     }
   }
 
-  async function saveReceiptItems(items: ReceiptLineInput[]): Promise<{ failedNames: string[] }> {
-    const failedNames: string[] = [];
+  async function saveReceiptItems(items: ReceiptLineInput[]): Promise<{ failedIds: string[] }> {
+    const failedIds: string[] = [];
     let addedCount = 0;
     for (const item of items) {
       try {
@@ -146,20 +146,26 @@ export function AddProductFlow() {
         });
         addedCount++;
       } catch {
-        failedNames.push(item.name);
+        failedIds.push(item.id);
       }
     }
     if (addedCount > 0) toast(`${addedCount} item${addedCount === 1 ? '' : 's'} added`);
-    if (failedNames.length === 0) {
+    if (failedIds.length === 0) {
       router.push('/pantry');
       router.refresh();
     }
-    return { failedNames };
+    return { failedIds };
   }
 
-  const rescan = () => setStep({ kind: 'scan' });
+  const rescan = () => {
+    latestRequest.current++;
+    setStep({ kind: 'scan' });
+  };
   const goReceipt = () => setStep({ kind: 'receipt_capture' });
-  const goManual = () => setStep({ kind: 'manual', gtin: null });
+  const goManual = () => {
+    latestRequest.current++;
+    setStep({ kind: 'manual', gtin: null });
+  };
   const expirySlot = (apply: Parameters<typeof ExpiryCapture>[0]['onConfirm']) => <ExpiryCapture onConfirm={apply} />;
 
   return (

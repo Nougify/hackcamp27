@@ -14,6 +14,7 @@ import { UNIT_LABELS } from '@/features/pantry/labels';
 const UNITS = Object.keys(UNIT_LABELS) as DisplayUnit[];
 
 export interface ReceiptLineInput {
+  id: string;
   name: string;
   quantity: number;
   displayUnit: DisplayUnit;
@@ -34,7 +35,7 @@ export function ReceiptReview({
   onCancel,
 }: {
   response: ReceiptExtractionResponse;
-  onConfirm: (items: ReceiptLineInput[]) => Promise<{ failedNames: string[] }>;
+  onConfirm: (items: ReceiptLineInput[]) => Promise<{ failedIds: string[] }>;
   onCancel?: () => void;
 }) {
   const id = useId();
@@ -62,15 +63,16 @@ export function ReceiptReview({
       const quantity = Number(row.quantity.trim().replace(',', '.'));
       if (!name) return setError('Every item needs a name, or remove it.');
       if (!Number.isFinite(quantity) || quantity <= 0) return setError(`Enter a quantity greater than 0 for "${name}".`);
-      parsed.push({ name, quantity, displayUnit: row.displayUnit });
+      parsed.push({ id: row.id, name, quantity, displayUnit: row.displayUnit });
     }
     if (parsed.length === 0) return setError('Add at least one item, or cancel.');
 
     setSaving(true);
     try {
-      const { failedNames } = await onConfirm(parsed);
-      if (failedNames.length > 0) {
-        setRows((rs) => rs.filter((r) => failedNames.includes(r.name.trim())));
+      const { failedIds } = await onConfirm(parsed);
+      if (failedIds.length > 0) {
+        const failedNames = parsed.filter((p) => failedIds.includes(p.id)).map((p) => p.name);
+        setRows((rs) => rs.filter((r) => failedIds.includes(r.id)));
         setError(`Couldn't add: ${failedNames.join(', ')}. The rest were added — try these again.`);
       }
     } catch (err) {
