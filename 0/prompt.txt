@@ -1,0 +1,414 @@
+cler
+
+---
+
+in pantry, instead of scan barcode make a scan receipt as the default UI and Scan barcode and add manually next to scan barcode... and built a feature that the user can just take a picture of the receipt and Gemini can read and know which article are being purchased, it has to be food only and add a remove option because sometimes they are buying for someone else.
+
+---
+
+<task-notification>
+<task-id>a1bcdfbb00cbde922</task-id>
+<tool-use-id>toolu_01FTb7uczPCb83aXYV8ucJwd</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-h4ng-l1u-Downloads-hackcamp27/6017fbcb-6815-42c5-ab16-9747292542f2/tasks/a1bcdfbb00cbde922.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore contracts, SPEC receipt mentions, ownership" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Now I have a complete picture. Here's the report:
+
+## 1. Existing "receipt" spec in SPEC.md — NOT found
+
+No section, feature, or mention of receipt scanning exists in SPEC.md. The only hit for "receipt" is incidental/unrelated noise (none, actually — grep returned zero matches for "receipt" case-insensitively). The feature is entirely unspeced.
+
+For the food/non-food filtering language, the only hit is for a *single-item* label-photo flow (F3), not a multi-item receipt:
+- `SPEC.md:1116` — "2. A photo of a non-food object returns `isFoodProduct=false`, and the UI says so and offers the manual form." (this is an F3 acceptance criterion, product-label photos, not receipts)
+- No hits for "non-food", "grocery item" as literal phrases elsewhere.
+- `isFoodProduct` itself: `SPEC.md:886` (contract field in `LabelExtractionResponse`), implemented at `src/server/vision/label.ts:109` (`isFoodProduct: x.is_food_product`), tested in `src/server/vision/vision.test.ts:195,233`.
+
+So a receipt-scan feature would be net-new — closest prior art is F3 "Product from label photo and manual form" (`SPEC.md:1091-1118`), which already has the Gemini-vision-with-untrusted-output, confirm-before-save, and food/non-food boolean pattern you'd want to reuse/extend.
+
+## 2. §3.2 Ownership by path (`SPEC.md:169-220`)
+
+| Path | Owner |
+|---|---|
+| `src/features/scan/**` | **B** (`SPEC.md:220` — "scan/** (BarcodeScanner, PhotoCapture) B") |
+| `src/app/api/vision/**` | **B** (`SPEC.md:201` — "vision/label/route.ts, vision/expiry/route.ts B") |
+| `src/server/vision/**` | **B** (`SPEC.md:209` — "vision/** (label + expiry prompts, date assembly, CFIA regex) B") |
+| `src/app/(app)/pantry/**` | **B** (`SPEC.md:196` — "(app)/today/**, (app)/pantry/** B") |
+| `src/app/api/pantry/**` | **B** (`SPEC.md:202` — "pantry/route.ts, pantry/[id]/route.ts B") |
+| `src/server/pantry/**` | **B** (`SPEC.md:210` — "pantry/**, nutrition/daily* B") |
+| `src/contracts/**` | **P0 (FROZEN)** (`SPEC.md:188` — "contracts/ domain.ts api.ts gesture.ts voice.ts index.ts fixtures/* P0 (FROZEN)") |
+
+So a receipt feature is entirely within Workstream B's turf for the app code, but since you'd need new contract types/schemas it also touches the frozen `src/contracts/**`, which per the §18.5 change protocol (`SPEC.md:2021-2027`) requires a human-authored dedicated `contract: …` commit on main, additive-only, announced to the team, with all workstreams rebasing — i.e. you can't just add it unilaterally from workstream B.
+
+## 3. `src/contracts/` contents and relevant types
+
+Files: `api.ts`, `domain.ts`, `gesture.ts`, `voice.ts`, `index.ts`, and `fixtures/{cook,pantry,meals,product,recipes,index}.ts`.
+
+Relevant exports in `src/contracts/domain.ts`:
+- `Product` (line 42) — canonical catalog product keyed by GTIN; has `categories: string[]`, `allergenTags`, `per100`/`perServing` nutrients, `source: Exclude&lt;ProductSource,'gemini_photo'|'manual'&gt;`.
+- `ProductDraft` (line 60) — **"Form model shared by label-photo extraction and the manual product form"**; `gtin: string|null`, `name`, `brand`, `packageQuantity`, `servingSize`, `basis: '100g'|'100ml'|'serving'|'unit'`, `nutrients`, `allergenTags`, `source: 'gemini_photo'|'manual'`. This is the existing "Draft" type you'd likely want a receipt-line analog of (one `ProductDraft`-shaped item per line, or a new `ReceiptItemDraft` extending/paralleling it).
+- `PantryItem` (line 72) — the stored pantry row: `dim: UnitDim` ('mass'|'volume'|'count'), `quantityBase: number`, `displayUnit: DisplayUnit`, `nutritionBasis`, `source: ProductSource`, `userVerified: boolean`, etc.
+- `ProductSource` (line 7 of the earlier excerpt) = `'dataandapis' | 'openfoodfacts' | 'gemini_photo' | 'manual'` — **no `'gemini_receipt'` (or similar) value yet**; this is exactly the kind of additive enum change the §18.5 protocol anticipates.
+- `UnitDim` = `'mass'|'volume'|'count'`, `DisplayUnit` = `'g'|'kg'|'oz'|'lb'|'ml'|'l'|'tsp'|'tbsp'|'cup'|'fl_oz'|'pcs'` — your grams/ml/count base-unit vocabulary.
+- `Allergen`, `DietFlag`, `Nutrients` — reusable as-is for any pantry item regardless of entry path.
+
+In `src/contracts/api.ts`:
+- `LabelExtractionResponse` (line 38) — `{ isFoodProduct: boolean; draft: ProductDraft; flaggedFields; macrosConsistent; confidence; notes; model }` — the direct template for a new `ReceiptExtractionResponse` (array of drafts + per-line `isFoodItem` instead of one boolean).
+- `CreatePantryItemRequest` (line 64) — what a confirmed receipt item would ultimately map to and POST to `/api/pantry`.
+- No existing receipt-related request/response types.
+
+## 4/5. Food vs non-food categorization today
+
+- There is **no boolean/categorical "is food" field on `Product`**. `Product.categories: string[]` (domain.ts:46) is a free-text taxonomy straight from the provider (Open Food Facts `categories_tags` / dataandapis `categories` string, see `src/server/products/openfoodfacts.ts:30,68` and `dataandapis.ts:29`) — e.g. `"Breakfasts, Snacks, Spreads, Sweet spreads, ..."`. It's used for display/UX, not as a food/non-food gate.
+- `src/server/products/normalize.ts` / `provider.ts` (full contents read) confirm: `buildProduct()` and `mergeProviders()` just carry `categories` through; no food/household/category-type discriminator exists for barcode-looked-up products. These providers (dataandapis, OFF) are food-only databases by construction, so the question of "is this food" never arises there — it only arises for **vision-extracted** items (photos of arbitrary objects), which is exactly F3's `isFoodProduct` boolean (`src/server/vision/label.ts:109`, driven by Gemini's `is_food_product` schema field).
+- `src/server/diet/check.ts` (full contents read) is unrelated to "is food" filtering — `checkDiet()` is a pure keyword-matching allergen/diet-flag violation checker (vegetarian/vegan/gluten_free/dairy_free via `ALLERGEN_KEYWORDS`/`DIET_KEYWORDS`), operating on ingredient text lines, not a food/non-food classifier.
+
+**Conclusion: there is no reusable "food vs non-food" or product-category type anywhere in the Product/PantryItem contracts.** The only precedent is the single-item `isFoodProduct: boolean` pattern from F3's Gemini label-vision flow, which a receipt feature should replicate per line item (e.g. a Gemini schema/prompt that returns `isFoodItem` per detected line, letting the UI pre-filter/strike through non-food lines before the user reviews).
+
+## 6. Base units &amp; FEFO (glossary, `SPEC.md:52-58`)
+
+- `SPEC.md:56` — **"Base units:** grams (mass), millilitres (volume), `count` (pieces). Every stored quantity uses one of them."
+- `SPEC.md:58` — **"FEFO:** first-expired-first-out, the rule for choosing which pantry row to deduct from."
+- Reinforced at `SPEC.md:258` ("Base units everywhere. Store `quantity_base` in g, ml or count, and keep the user's `display_unit` alongside for display") and `SPEC.md:1714` ("show the user's display unit and accept common abbreviations. Never show raw base units to users").
+- FEFO is used in matching/deduction logic (`SPEC.md:1171`, `1319`) — relevant to your feature only insofar as newly-added pantry items from a receipt need `quantityBase` + `dim`/`displayUnit` + (optionally) an expiry date so they correctly enter the FEFO ordering; the receipt flow itself wouldn't implement FEFO, just produce well-formed `PantryItem`/`CreatePantryItemRequest` payloads.
+
+### Summary for planning
+- No existing spec, contract, or server logic for receipt scanning — this is 100% new scope, owned entirely by Workstream B for app/server code, but touching the frozen `src/contracts/**` (needs a human "contract:" commit per §18.5, `SPEC.md:2021-2027`).
+- Best template to clone/extend: F3 (`SPEC.md:1091-1118`, `src/server/vision/label.ts`, `LabelExtractionResponse`/`ProductDraft` in contracts) — same "Gemini extracts → server validates → user must Confirm before anything is saved" pattern, just pluralized to a list of line items and swapping the per-label 4 MB/≤3-image limit for whatever's appropriate to one receipt photo.
+- Food/non-food filtering has no reusable contract field today (`Product.categories` is free-text, not a type gate) — you'll need new Gemini-side classification (an `isFoodItem` per receipt line, mirroring `isFoodProduct`) and likely a new `ProductSource` value (e.g. `'gemini_receipt'`) plus a new API response/draft type, added additively to `src/contracts/domain.ts` and `api.ts`.
+- Units: reuse `UnitDim`/`DisplayUnit`/`quantityBase` as-is; Gemini will need to guess/derive grams-ml-count per line, which the user can correct in review before the item is POSTed to `/api/pantry` via the existing `CreatePantryItemRequest` shape.</result>
+<usage><subagent_tokens>51284</subagent_tokens><tool_uses>20</tool_uses><duration_ms>67912</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a595cce6b2b45289e</task-id>
+<tool-use-id>toolu_01VESZw1fZzVzcVuMKSk3KgG</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-h4ng-l1u-Downloads-hackcamp27/6017fbcb-6815-42c5-ab16-9747292542f2/tasks/a595cce6b2b45289e.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore pantry add UI flow" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Here is the full report.
+
+## 1. The add-item page — `src/app/(app)/pantry/add/page.tsx`
+
+A server component (async). No tabs/modes/query params exist at this level at all:
+
+```
+1  import { AddProductFlow } from '@/features/scan/AddProductFlow';
+2  import { requireOnboardedProfile } from '@/server/pantry/page-guard';
+5  export default async function AddToPantryPage() {
+6    await requireOnboardedProfile();   // redirects to /auth/login or /onboarding
+10   return &lt;AddProductFlow /&gt;;
+```
+
+- Guard: `requireOnboardedProfile()` (`src/server/pantry/page-guard.ts:21`) → `requireUser()` then checks `profile.onboarded`; redirects un-auth'd users to `/auth/login`, un-onboarded ones to `/onboarding`.
+- There is **no mode switch here** — all mode/step logic lives entirely inside the client component `AddProductFlow`. No query-string params are read on this page. This is the natural place to add a `?mode=receipt` style entry, or a sibling route like `src/app/(app)/pantry/scan-receipt/page.tsx`, since the page itself does nothing but auth-guard + render the flow + a fixed `&lt;h1&gt;`.
+
+## 2. `src/features/scan/AddProductFlow.tsx` — the flow component
+
+**State machine** (`Step` union, line 22-29), driven by a single `useState&lt;Step&gt;`:
+
+- `{ kind: 'scan', notice?, ignoreGtin? }` — default/initial step (line 57). Renders `&lt;BarcodeScanner&gt;`.
+- `{ kind: 'looking' }` — barcode lookup in flight.
+- `{ kind: 'found', product }` — product found by barcode → shows `FoundCard` + prefilled `ProductForm`.
+- `{ kind: 'not_found', gtin }` — barcode valid but no product match → offers "Take photo of label" / "Enter manually" / "Scan another".
+- `{ kind: 'label', gtin, message? }` — shows `PhotoCapture` (up to 3 photos) to read the label via Gemini.
+- `{ kind: 'draft', response }` — Gemini label-read succeeded → prefilled `ProductForm` with AI badge + flagged fields.
+- `{ kind: 'manual', gtin }` — blank `ProductForm`, reachable from every step via an "Enter manually" ghost button (always rendered except on `manual`/`draft`/`not_found`, lines 189-201).
+
+No React Router/URL-based switching — it's pure in-memory state, no tabs component. "Default mode" = `scan` (barcode).
+
+**Key async handlers:**
+- `lookup(code: ScannedCode)` (line 62) — calls `scanApi.lookup(code.lookupCode)` → `/api/products/lookup`. Dispatches to `found` / `not_found` / back to `scan` with a notice on invalid barcode or network error.
+- `readLabel(photos: Blob[], gtin)` (line 78) — calls `scanApi.readLabel(photos, gtin)` → `/api/vision/label`. On `isFoodProduct` true → `draft` step; else back to `label` with an error message.
+- `save(values, gtin, source, userVerified)` (line 94) — the **final save**: `await pantryApi.create({ ...values, gtin, source, userVerified })`, then `toast(...)`, `router.push('/pantry')`, `router.refresh()`.
+
+A `latestRequest` ref (line 60) is bumped on every navigation so a slow in-flight lookup/label-read can't clobber a step the user has already moved past (race-guard pattern — important to replicate for receipt scanning, which will likely have a similarly slow Gemini call).
+
+**Composition of children:**
+- `BarcodeScanner` — loaded via `dynamic(..., { ssr: false })` (line 20) since it needs `navigator.mediaDevices`/camera APIs.
+- `PhotoCapture` — used twice: directly in the `label` step (gtin photo-of-label, max 3) and inside `ExpiryCapture` (max 1, for the date photo).
+- `ExpiryCapture` — passed into `ProductForm` as a render-prop slot: `expirySlot={(apply) =&gt; &lt;ExpiryCapture onConfirm={apply} /&gt;}` (line 102). This is the pattern a new "Scan receipt" entry point should probably mimic if it needs to inject its own capture UI into a shared form.
+- `ProductForm` (from `src/features/pantry/ProductForm.tsx`) is the single shared quantity/unit/expiry/nutrition form used for all three "we have data" steps (`found`, `draft`, `manual`).
+
+**Quantity/unit/expiry confirm flow:** `ProductForm` owns quantity, `displayUnit`, expiry date/source/rawText, nutrition, allergens as local state, pre-filled via `initial: ProductFormInitial` (built by `productToFormInitial`/`draftToFormInitial` in `pure.ts`). Nothing is persisted until the user hits the form's submit button — confirm-before-save is explicit by design (comment at `ProductForm.tsx:9-11`, "SPEC F3/F5 ... Nothing is saved until the user presses the submit button"). `ExpiryCapture` only ever proposes a date via `onConfirm(AppliedExpiry)`; the actual save happens later when `ProductForm`'s `submit` fires.
+
+**Final save API call/payload:** `pantryApi.create(body: CreatePantryItemRequest)` → `POST /api/pantry` (see §4/§6 below for exact shape).
+
+## 3. Capture components
+
+### `BarcodeScanner.tsx` (`src/features/scan/BarcodeScanner.tsx`)
+- Props: `{ onCode: (code: ScannedCode) =&gt; void; notice?: string | null; ignoreGtin?: string | null }`. `ScannedCode = Extract&lt;BarcodeResult, { ok: true }&gt;` from `@/lib/gtin`.
+- Gets a live camera stream via `getUserMedia`, runs `getDetector()` (see detector.ts) on a 150ms polling loop (`SCAN_INTERVAL_MS`), requires 2 identical consecutive reads (`createReadConfirmer(2)` from `pure.ts`) before firing `onCode`.
+- Fallback paths always visible: a typed-barcode `&lt;input&gt;` form, and a hidden file input (`capture="environment"`) to scan from a photo instead of live video — so it degrades gracefully with no camera.
+- Handles multi-camera device picker + torch toggle.
+- `ignoreGtin` lets the flow re-show the scanner after an invalid code without the camera re-triggering on the same code immediately.
+
+### `PhotoCapture.tsx` (`src/features/scan/PhotoCapture.tsx`)
+- Generic reusable multi-shot capture widget. Props: `{ max: number; busy: boolean; addLabel: string; submitLabel: string; onSubmit: (photos: Blob[]) =&gt; void }`.
+- Uses `&lt;input type="file" accept="image/*" capture="environment"&gt;` per shot (native camera capture pattern), shows local `URL.createObjectURL` previews, lets user remove shots, revokes object URLs on unmount.
+- **Downscaling before upload**: `downscale(file)` (lines 12-26) — `createImageBitmap`, resizes via `fitWithin(w, h, 1600)` (`pure.ts`) so the long edge is ≤1600px, draws to an offscreen `&lt;canvas&gt;`, exports `image/jpeg` at quality 0.85. HEIC files that fail `createImageBitmap` (e.g. non-Safari) fall through unchanged and let the server accept/reject. This downscale happens entirely client-side, right before `onSubmit` is called — this is the exact mechanism a receipt-scan feature should reuse (likely with the same component, or a near-copy).
+- `submit()` awaits `Promise.all(shots.map(downscale))` then calls `onSubmit`.
+
+### `ExpiryCapture.tsx` (`src/features/scan/ExpiryCapture.tsx`)
+- Props: `{ onConfirm: (expiry: AppliedExpiry) =&gt; void }` (`AppliedExpiry` from `ProductForm.tsx`: `{ date, source: 'photo'|'manual', rawText }`).
+- Self-contained `&lt;Dialog&gt;` (from `@/components/ui`) triggered by a "Photo of date" button; internally renders a single-shot `PhotoCapture` → on submit calls `scanApi.readExpiry(photos[0])` → `POST /api/vision/expiry`.
+- Confirm-before-apply UX: shows the AI "Read by AI, please confirm" `Badge`, lets user pick between ambiguous date candidates (radio buttons) or edit a native `&lt;input type="date"&gt;`, flags packaged-on dates as not usable as expiry, shows low-confidence/regex-disagreement warnings, and only calls `onConfirm` when the user presses "Confirm date" — never auto-applies.
+- Notably guards against the dialog's Enter key submitting the *outer* `ProductForm` (it lives nested inside that `&lt;form&gt;`).
+
+## 4. `src/features/scan/api.ts` — client API helpers
+
+```ts
+export const scanApi = {
+  lookup: (barcode: string) =&gt; api&lt;ProductLookupResponse&gt;('/api/products/lookup', { method: 'POST', json: { barcode } }),
+  readLabel: (photos: Blob[], gtin: string | null) =&gt; { /* multipart FormData, field 'images' (×N), 'gtin'? */
+    return api&lt;LabelExtractionResponse&gt;('/api/vision/label', { method: 'POST', body: form });
+  },
+  readExpiry: (photo: Blob) =&gt; { /* multipart FormData, field 'image' */
+    return api&lt;ExpiryExtractionResponse&gt;('/api/vision/expiry', { method: 'POST', body: form });
+  },
+};
+```
+Built on the generic `api&lt;T&gt;()` helper in `src/features/pantry/api.ts:17-36`: JSON-stringifies if `json` is given, otherwise passes `body` (FormData) through untouched; parses response text as JSON; on non-OK status throws `ApiClientError(message, status, code, details)` using the server's `ApiError` shape (`{ error: { code, message, details? } }`). This is the pattern for error handling throughout — every scanApi/pantryApi call either resolves with typed data or throws `ApiClientError`, which the UI catches with `e instanceof Error ? e.message : fallback`.
+
+A future `scanApi.readReceipt(photos)` posting multipart images to something like `/api/vision/receipt` would follow this exact pattern.
+
+## 5. `detector.ts` / `pure.ts` (brief)
+
+- **`detector.ts`**: lazily builds a singleton `Detector` — prefers the native `BarcodeDetector` API if it supports `ean_13`, else dynamically imports a ZXing WASM ponyfill (`barcode-detector/ponyfill`) with its `.wasm` served from `/zxing/` on our own origin (no CDN). Exposes `getDetector(): Promise&lt;Detector&gt;` with `detect(source): Promise&lt;DetectedCode[]&gt;`.
+- **`pure.ts`**: pure helper functions for the scan flow — `createReadConfirmer(needed)` (debounce N identical barcode reads), `asBarcodeFormat` (string → `BarcodeFormat` union), `fitWithin(w,h,max)` (downscale math used by `PhotoCapture`), and `productToFormInitial` / `draftToFormInitial` which convert a looked-up `Product` or Gemini `ProductDraft` into `ProductFormInitial` (handles per-serving → per-100 nutrition conversion, dropping nutrition when the serving size is unknown).
+
+## 6. Pantry CRUD routes
+
+### `POST /api/pantry` — `src/app/api/pantry/route.ts:31-42`
+```ts
+const user = await requireUser();                 // auth: throws UnauthorizedError → 401 via handleRouteError
+const body = await req.json().catch(() =&gt; undefined);
+const parsed = createPantryItemSchema.safeParse(body);
+return jsonOk(await createPantryItem(user.id, user.tz, parsed.data), { status: 201 });
+```
+No rate limiting on this route (rate limiting exists only for `vision`, `products/lookup`, `recipes/*`, `tts` per `src/lib/rate-limit.ts:7-13` — plain save of a pantry item is unlimited).
+
+**Zod schema** `createPantryItemSchema` (`src/server/pantry/validation.ts:86-94`), built from shared `pantryFields` (line 62-77):
+- `name`: string, trim, 1–120 chars (required)
+- `brand`: string ≤120, nullable, optional
+- `quantity`: **positive** number (overridden from `nonNegative` to `positive` specifically for create, line 89) — required
+- `displayUnit`: must be a valid `DisplayUnit` (`g|kg|oz|lb|ml|l|tsp|tbsp|cup|fl_oz|pcs`) — required
+- `gramsPerUnit`, `densityGPerMl`: positive numbers, nullable/optional (used for count/volume unit conversion)
+- `expiryDate`: ISO date string or null, optional
+- `expirySource`: `'photo'|'manual'`|null, optional — **must be set together with expiryDate** (`.refine(expiryConsistent, ...)`, DB CHECK-mirroring rule)
+- `expiryRawText`: string ≤200, nullable, optional
+- `nutritionBasis`: `'100g'|'100ml'|'unit'` — required
+- `nutrition`: nested nutrients object (all nullable numeric fields ≤999,999), nullable/optional
+- `servingSizeBase`: positive number, nullable/optional
+- `allergenTags`: array of allergen enum, optional
+- `userVerified`: boolean — required
+- plus (create-only): `gtin`: string ≤20, nullable/optional; `source`: enum `'dataandapis'|'openfoodfacts'|'gemini_photo'|'manual'` — required
+
+`.strict()` — unknown keys rejected. Compile-time assertion (`_CreateMatches`, line 113) ensures the Zod-inferred type stays assignable to the `CreatePantryItemRequest` contract.
+
+### `PATCH /api/pantry/[id]` and `DELETE /api/pantry/[id]` — `src/app/api/pantry/[id]/route.ts`
+- Same auth pattern (`requireUser()` first line).
+- `isUuid(id)` check before anything else; malformed/foreign ids → 404 (never 403, per spec comment).
+- `updatePantryItemSchema` (`validation.ts:96-105`): same fields but all optional, plus `adjustReason?: 'manual_adjust'|'discard'`; `.refine` requires at least one key present ("nothing to update").
+- No rate limiting here either.
+
+### Auth pattern (`src/lib/current-user.ts`)
+`requireUser()` is literally "first line of every route handler" (comment at line 57-61): in dev without Auth0 it returns a seeded `DEV_USER`; otherwise reads the Auth0 session, upserts into the `users` table by `auth0_sub`, returns `AppUser { id, auth0Sub, email, displayName, avatarUrl, tz }`. Throws `UnauthorizedError`, caught uniformly by `handleRouteError` in every route (`src/lib/http.ts`).
+
+## 7. Relevant contracts
+
+- `src/contracts/domain.ts`
+  - `Product` (line 42) — canonical looked-up product (gtin, name, brand, per100 nutrients, packageQuantity, source = OFF/dataandapis).
+  - `ProductDraft` (line 60) — shared shape for Gemini label-read and manual entry drafts (`source: 'gemini_photo'|'manual'`).
+  - `PantryItem` (line 72) — the saved/returned pantry row shape (quantityBase, displayUnit, quantityDisplay formatted string, daysToExpiry computed server-side in user's tz, nutrition, allergenTags, source, userVerified).
+  - `ProductSource` (line 7): `'dataandapis'|'openfoodfacts'|'gemini_photo'|'manual'` — a "receipt scan" source would presumably add a new variant here, e.g. `'gemini_receipt'`.
+  - `Nutrients`, `DisplayUnit`, `Allergen`, `DietFlag`, `UnitDim` also defined here.
+- `src/contracts/api.ts`
+  - `ProductLookupRequest/Response` (lines 25-35) — barcode lookup contract.
+  - `LabelExtractionResponse` (lines 38-46) — `{ isFoodProduct, draft: ProductDraft, flaggedFields, macrosConsistent, confidence, notes, model }` — the shape a receipt-line-item extraction response would likely mirror (confidence/flaggedFields/model pattern).
+  - `ExpiryExtractionResponse` (lines 49-58) — date-reading contract with `candidates`, `needsUserChoice`, `yearInferred`, `regexCrossCheck`.
+  - `CreatePantryItemRequest` / `UpdatePantryItemRequest` (lines 64-84) — the exact POST/PATCH body shapes matching the Zod schemas above.
+  - `ApiError`/`ApiErrorCode` (lines 3-6) — uniform error envelope used by `jsonError`/`handleRouteError` server-side and `ApiClientError` client-side.
+
+## Architecture summary / data flow
+
+```
+AddToPantryPage (server, auth+onboarding guard)
+ └─ AddProductFlow (client, step state machine)
+     ├─ scan:      BarcodeScanner --onCode--&gt; scanApi.lookup --&gt; POST /api/products/lookup
+     ├─ looking:   spinner text
+     ├─ found:     FoundCard + ProductForm(initial=productToFormInitial(product))
+     ├─ not_found: buttons → label | manual | rescan
+     ├─ label:     PhotoCapture(max 3) --downscale--&gt; scanApi.readLabel --&gt; POST /api/vision/label (Gemini)
+     ├─ draft:     ProductForm(initial=draftToFormInitial(draft), AI badge, flaggedFields)
+     ├─ manual:    ProductForm(no initial)
+     └─ (all of found/draft/manual) ProductForm.onSubmit → AddProductFlow.save()
+           → pantryApi.create(CreatePantryItemRequest) → POST /api/pantry
+           → requireUser() → createPantryItemSchema.safeParse → createPantryItem(repo) → 201 PantryItem
+           → toast + router.push('/pantry') + router.refresh()
+
+ ExpiryCapture (rendered inside ProductForm via expirySlot prop)
+     └─ PhotoCapture(max 1) --downscale--&gt; scanApi.readExpiry --&gt; POST /api/vision/expiry (Gemini)
+         → user confirms/edits date in a Dialog → onConfirm(AppliedExpiry) → fills ProductForm's date field
+```
+
+**Gemini vision wiring** (relevant to receipt scanning, which will follow the same pattern):
+- Route handler: `requireUser()` → `checkRateLimit(user.id, 'vision')` (10/min bucket, shared by both existing vision routes; a receipt route should probably get its own bucket key added to `RATE_LIMITS` in `src/lib/rate-limit.ts:7-13`) → `readImages(request, field, max)` (`src/server/vision/upload.ts`) which validates content-length, file count/size (≤4MB each)/mime type, and base64-encodes into `GeminiImage[]` — **images are never persisted to disk/DB, only held in memory for the request**.
+- `geminiJson({ system, text, images, jsonSchema, zod, model?, timeoutMs? })` (`src/lib/gemini/client.ts:56-100`) calls Vertex AI (`GoogleGenAI({ vertexai: true, ... })`) with `responseMimeType: 'application/json'` + `responseSchema`, strips ```json fences, zod-validates, retries once on schema mismatch, throws after 2 failures.
+- Errors funnel through `visionUnavailable(err)` (`upload.ts:43-47`) which logs only `err.message` (never the photo) and returns a generic `UPSTREAM_UNAVAILABLE` error to the client.
+- Each route builds its own Gemini JSON schema + Zod validator in `src/lib/gemini/schemas.ts` (e.g. `labelJsonSchema`/`labelSchema`, `expiryJsonSchema`/`expirySchema`) and its own response-shaping function (`src/server/vision/label.ts`'s `buildLabelResponse`, `src/server/vision/date.ts`'s `assembleDate`). A receipt-scan feature would add: a new Gemini schema (e.g. receipt line items array), a new `/api/vision/receipt/route.ts` following the exact `label/route.ts` skeleton, and a server-side response builder, likely returning something like `{ items: ReceiptLineItem[], confidence, model }` for the client to turn into a batch of pre-filled `ProductForm`/pantry-create calls.
+
+**UI primitives reused** (`src/components/ui`, exported from `index.ts`):
+- `Button` (`button.tsx`) — `variant="secondary"|"ghost"`, used everywhere for actions/nav.
+- `Card` (`card.tsx`) — wraps `FoundCard`, the not-found panel, the label-photo panel.
+- `Badge` (`card.tsx`) — `tone="ai"` badge for "Read by AI, please confirm" (used in `AddProductFlow`'s draft step and in `ExpiryCapture`).
+- `Dialog` (`dialog.tsx`) — native `&lt;dialog&gt;` wrapper with `open`/`onClose`/`title`, used by `ExpiryCapture` for its photo-of-date modal.
+- `useToast` (`toast.tsx`) — success toast on save (`AddProductFlow.save`).
+- **No Tabs component exists anywhere in `src/components/ui`** — mode switching today is done purely via the `Step` discriminated union and conditional rendering, not a tab widget. If "Scan receipt" needs a tabbed entry point alongside "Scan barcode" / "Manual", that UI primitive doesn't exist yet and would need to be built or the flow would need a similar step-based approach (e.g. an initial `{ kind: 'choose' }` step with buttons for "Scan barcode" vs "Scan receipt" vs "Manual").</result>
+<usage><subagent_tokens>61325</subagent_tokens><tool_uses>29</tool_uses><duration_ms>125165</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aac7f046aa0a297f3</task-id>
+<tool-use-id>toolu_01FhAYQURLXQZHLrvCJKPzZ9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-h4ng-l1u-Downloads-hackcamp27/6017fbcb-6815-42c5-ab16-9747292542f2/tasks/aac7f046aa0a297f3.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore Gemini vision pipeline pattern" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result># Gemini-Vision Pipeline in Chefly — Full Report
+
+## 1. Route handlers: `src/app/api/vision/label/route.ts` and `.../expiry/route.ts`
+
+Both are byte-for-byte the same shape (label is 38 lines, expiry is 38 lines):
+
+```
+src/app/api/vision/label/route.ts:10   export const runtime = 'nodejs';
+src/app/api/vision/label/route.ts:13-37  POST handler
+```
+
+Pattern, in order, for every vision route:
+1. `export const runtime = 'nodejs'` (line 10/11) — needed because `@google/genai` and Buffer-based image decoding aren't Edge-safe.
+2. `try { … } catch (err) { return handleRouteError(err); }` wraps the whole body (outer try/catch).
+3. `const user = await requireUser();` — `src/lib/current-user.ts:62` — first line of every route per SPEC §7; throws `UnauthorizedError` (caught by `handleRouteError`).
+4. `const limit = checkRateLimit(user.id, 'vision');` — `src/lib/rate-limit.ts:29`; the `'vision'` bucket is shared by label+expiry (10/min, `src/lib/rate-limit.ts:10`). On failure throws `new RateLimitedError(msg, limit.retryAfterMs)` which `handleRouteError` (`src/lib/http.ts:51-55`) turns into 429 + `Retry-After` header.
+5. **Request parsing**: no JSON body — always `multipart/form-data` via `readImages(request, field, max)` (`src/server/vision/upload.ts:19`). `readImages` returns a discriminated union `{ok:true, images, form} | {ok:false, response}`; routes do `if (!upload.ok) return upload.response;` instead of throwing. Label route also reads an extra plain field off the same `FormData`: `const gtin = upload.form.get('gtin')`.
+6. **Gemini call + Zod validation**: wrapped in its own inner `try/catch` so Gemini failures get a *generic* user-facing message instead of leaking through `handleRouteError`:
+   ```ts
+   try {
+     const { data, model } = await geminiJson({ system, text, images, jsonSchema, zod });
+     return jsonOk(...);
+   } catch (err) {
+     return visionUnavailable(err);
+   }
+   ```
+7. **Response**: `jsonOk(...)` (`src/lib/http.ts:33`, thin wrapper over `NextResponse.json`). Label route builds the response via `buildLabelResponse(data, model, gtin)` (pure fn in `server/vision/label.ts`); expiry route builds it via `assembleDate(data, todayInTz(user.tz))` (pure fn in `server/vision/date.ts`).
+8. **Error shape**: `handleRouteError` (`src/lib/http.ts:46-60`) maps typed errors (`UnauthorizedError`, `NotFoundError`, `ConflictError`, `UnprocessableError`, `RateLimitedError`, `ZodError`) to the right `ApiError` + status code via `STATUS_BY_CODE`, special-cases a Gemini-quota 429 (`isGeminiQuota`) to `RATE_LIMITED`, and otherwise logs and returns a generic 500 `INTERNAL`.
+
+Each route has a one-line `// SPEC F3/F4 …` comment pinning it to the spec section.
+
+## 2. Server vision logic: `label.ts` and `date.ts`
+
+### `src/server/vision/label.ts` — `buildLabelResponse(x: LabelExtraction, model, gtin)`
+Pure function. Treats the already-Zod-validated `LabelExtraction` as still untrustworthy and re-derives everything into a `flaggedFields: Set&lt;Flag&gt;`:
+- `clean()` (line 48) nulls out and flags any negative nutrient.
+- kJ-only labels: regex `KJ_IN_NOTES` pulls a kJ figure out of Gemini's free-text `notes` and converts (`÷4.184`), flagging `energyKcal` since it's derived, not printed (lines 68-75).
+- `macrosConsistent()` (line 30) is an exported pure cross-check: `4p+4c+9f` vs `kcal`, tolerance `max(20%, 5kcal)` absolute floor for near-zero labels (`MIN_KCAL_TOLERANCE`); on failure flags all four macro fields.
+- Serving size sanity range 1–1000 (line 82); if present but out of range, flags `servingSize`.
+- If `basis === 'unknown'`, every non-null nutrient gets flagged (can't trust numbers with no known basis) (lines 89-92).
+- Package quantity validated `&gt;0` before being mapped through `PACKAGE_UNITS` (line 19) into the app's `DisplayUnit`.
+- GTIN: `draftGtin()` (line 36) only trusts a barcode if it round-trips through `normalizeBarcode()` (`src/lib/gtin.ts`), preferring the client-supplied `gtin` form field over Gemini's OCR'd `barcode_digits_if_visible`.
+- **Allergens are never taken from Gemini at all** — `allergenTags: []` is hardcoded (line 118); the user must tick them manually in `ProductForm.tsx`. This is the project's strongest "don't trust the model" move for this endpoint.
+- Final return is `{ isFoodProduct, draft: ProductDraft, flaggedFields, macrosConsistent, confidence, notes, model }` — exactly `LabelExtractionResponse` from `src/contracts/api.ts:38-46`.
+
+### `src/server/vision/date.ts` — the CFIA cross-check
+- `parseCfia(rawText)` (line 34) runs the CFIA month-code regex (`CFIA`, line 22) against Gemini's `raw_text`, first stripping the bilingual "BB/MA" marker (line 24) so it isn't misread as the month May. Regex is deliberately bounded (`(?!\d)`, `(?![A-Z])`) so adjacent digits/letters can't be swallowed into a false match (e.g. "MA 2026" vs "MAY" vs "NORTH 12").
+- `regexCrossCheck(x)` (line 44) independently re-derives month/day/year from the raw OCR text and compares against what Gemini's structured fields claim (handling `ambiguous_order` swap), returning `'agree' | 'disagree' | 'no_match'` — this is surfaced to the UI as a trust signal, not used to silently override Gemini.
+- `assembleDate(x, today)` (line 81) is the actual "don't trust the model" gate on dates:
+  - `packaged_on` or missing month/day → `suggestedDate: null` (never offered as an expiry).
+  - Missing year → `nextOccurrence()` picks the next calendar date ≥ today (not an arbitrary year).
+  - Candidate dates are clamped to `[today-1y, today+5y]` (`earliest`/`latest`, lines 95-96) — directly implements SPEC F4's "reject dates more than 5 years ahead or more than 1 year past."
+  - Ambiguous day/month order produces up to 2 deduped candidates and sets `needsUserChoice: true` so the *user* disambiguates, never the server.
+
+## 3. Upload handling: `src/server/vision/upload.ts` / `upload.test.ts`
+
+- `MAX_IMAGE_BYTES = 4 * 1024 * 1024` (4 MB per file, line 9).
+- `MAX_BODY_BYTES = 10 * 1024 * 1024` (10 MB total request body cap, matching Next's proxy buffering limit, line 11) — checked via `Content-Length` header **before** `request.formData()` is even called, to fail fast without buffering an oversized body.
+- `ALLOWED_TYPES` (line 13): `image/jpeg, image/png, image/webp, image/heic, image/heif`.
+- `readImages(request, field, max)` (line 19): validates content-length → parses `request.formData()` (native Fetch API, no external multipart library) → filters `FormData.getAll(field)` to `File` instances → enforces count (`files.length &gt; max`) → enforces per-file size → enforces mime type → base64-encodes each file via `Buffer.from(await f.arrayBuffer()).toString('base64')` into `GeminiImage[]`.
+- No resizing/decoding happens server-side — downscaling is done client-side (see §PhotoCapture below); the server only size/type-gates.
+- Images are **never persisted or logged**: comment at upload.ts:7 ("Photos are held in memory for one request and never stored or logged (SPEC F3, F4, §13)"), and `visionUnavailable(err)` (line 43) deliberately logs only `err.message`, never the raw error/photo bytes — verified by `upload.test.ts`'s "logs only the error message (never the raw error)" test (lines 76-84).
+- `upload.test.ts` patterns worth reusing for a new endpoint's tests: a `fakeRequest()` helper stubbing `headers.get` + `formData()`, and a `codeOf()` helper that unwraps the `ApiError` JSON body's `error.code`. Covers: body-size-before-parse rejection, non-multipart body, no file, too many files, oversized file, disallowed mime, and the happy path (checks `result.form.get('note')` still works, i.e. non-file fields pass through).
+
+## 4. Gemini client wrapper: `src/lib/gemini/client.ts`
+
+- Singleton `getClient()` (line 8) lazily builds `new GoogleGenAI({ vertexai: true, project, location })` — **Vertex AI**, not the public Gemini API key, authenticated via ADC.
+- `GeminiImage` type (line 18) is the shared image shape (`mimeType` + base64 `data`) used by all vision callers.
+- `callWithTimeout()` (line 23): wraps any call in an `AbortController` + `setTimeout`, default pattern for cancellation.
+- **`geminiJson&lt;T&gt;(opts)`** (line 56) — the one function both existing vision routes call:
+  - `model = opts.model ?? env.GEMINI_MODEL` → default `'gemini-3.8-flash'` (`src/lib/env.ts:26`).
+  - `timeoutMs` default `30_000`.
+  - Builds `parts: Part[]` with **text part first, then image parts** (`inlineData: {mimeType, data: base64}`) — SPEC explicitly calls out "put the text prompt BEFORE images" as a docs tip (line 58 comment).
+  - Calls `getClient().models.generateContent({ model, contents: [{role:'user', parts}], config: { systemInstruction, responseMimeType: 'application/json', responseSchema: jsonSchema, abortSignal } })` — this is the **structured output** mechanism: `responseSchema` is a Gemini JSON-Schema subset (§10.3.6: only `string|number|integer|boolean|object|array|null`, no `minLength`/`maxLength`/`uniqueItems`, nullable via type arrays not `nullable:true`).
+  - Response text is fence-stripped (` ```json ` wrappers, line 33-39) then `JSON.parse`'d, then **always** re-validated with the caller-supplied `zod.safeParse()` — this is the "structured output guarantees shape, not correctness" defense (comment lines 49-55 cites https://ai.google.dev/gemini-api/docs/structured-output).
+  - **Exactly one retry** on parse/schema failure (line 93-99); if the second attempt also fails it throws a plain `Error` with the Zod error message — this is what the route's inner `catch` turns into `visionUnavailable()`.
+- `geminiGroundedSearch()` (line 107) is the sibling used for recipe discovery — **not used for vision**, but notable: it never combines `googleSearch` tool with a `responseSchema` (documented 2025–26 Gemini bug), so a new vision endpoint should follow `geminiJson`'s shape (JSON mode, no tools), not this one.
+
+## 5. Contracts: `src/contracts/api.ts` + `domain.ts`
+
+Pattern for "untrusted draft requiring confirmation":
+- `src/contracts/api.ts:38-46` — `LabelExtractionResponse { isFoodProduct, draft: D.ProductDraft, flaggedFields: Array&lt;keyof Nutrients|'servingSize'|'packageQuantity'|'name'&gt;, macrosConsistent, confidence, notes, model }`. The doc-comment directly above it pins the route contract: `// POST /api/vision/label   multipart/form-data: images (1–3 files, each ≤ 4 MB, jpeg/png/webp/heic), gtin?`.
+- `src/contracts/api.ts:49-58` — `ExpiryExtractionResponse { rawText, dateType, suggestedDate, candidates, needsUserChoice, yearInferred, regexCrossCheck, confidence }`.
+- `src/contracts/domain.ts:60-70` — `ProductDraft` is explicitly "Form model shared by label-photo extraction **and** the manual product form" with `source: 'gemini_photo' | 'manual'` — i.e. the established convention is: define one domain "Draft" type reusable by both the AI path and the plain manual-entry path, feeding the same form component.
+- The `confidence: 'high'|'medium'|'low'` and `model: string` fields on `LabelExtractionResponse` are the established "show your work" fields — client surfaces `model` for attribution-ish transparency and could gate UI based on `confidence`.
+
+## 6. SPEC.md rules (§F3/F4, §10.3, §12/13)
+
+- **Cost control**: SPEC §10.3.1 (`SPEC.md:1444`) — images ≤384px cost 258 tokens, larger ones get tiled at 768×768 (258 tokens/tile); "Downscaling to about 1600 px is a balance between legibility and cost." This is exactly what `PhotoCapture.tsx`'s `MAX_EDGE = 1600` constant implements client-side before upload (§below).
+- **Image/body size limits**: §F3 AC4 (`SPEC.md:1118`) "Images over 4 MB return 413. More than 3 images returns 400" — matches `upload.ts` exactly.
+- **Confirmation requirement**: §12 item 2 (`SPEC.md:1698`) "**Confirm before save** for every AI extraction. Nothing from Gemini reaches the database without a user tap," reiterated in F3 (`SPEC.md:1112`, "Nothing extracted by Gemini is saved until the user presses Confirm") and F4 (`SPEC.md:1129`, "requires confirmation").
+- **AI badge/attribution rule**: §12 item 1 (`SPEC.md:1697`) — "Anything Gemini generated or transformed carries a visible badge: … 'Read by AI, please confirm' on label and expiry drafts." Implemented as `&lt;Badge tone="ai"&gt;Read by AI, please confirm&lt;/Badge&gt;` in both `AddProductFlow.tsx:175` and `ExpiryCapture.tsx:76`, using the `ai` tone defined in `src/components/ui/card.tsx:7-14` (`bg-ai-soft text-ai`).
+- **"Colour is never the only signal"** (§12 item 5, `SPEC.md:1705`): the `Badge` component's own doc-comment reiterates this.
+- **Photos never stored** (§13 table, `SPEC.md:1730`): "Label and expiry photos go to Gemini through our server for one request and are **not persisted** (memory only). The UI copy says so." — matches `upload.ts` comment and no filesystem/DB write anywhere in the pipeline.
+- **Schema/JSON-mode constraints**: §10.3.6 (`SPEC.md:1521-1526`) — the exact Gemini JSON-Schema subset supported (types, no `minLength`/`maxLength`/`uniqueItems`, risk of 400 on overly large/nested schemas).
+- **F3/F4 full requirements** are at `SPEC.md:1103-1136`, already quoted above; they enumerate every server sanity check `label.ts`/`date.ts` implement, so these line numbers are the authoritative source if the new receipt endpoint needs analogous rules written up.
+
+## 7. Client-side pattern (camera → form → confirm)
+
+- **`src/features/scan/PhotoCapture.tsx`**: generic reusable capture widget (`max`, `addLabel`, `submitLabel`, `onSubmit(photos: Blob[])`). Uses `&lt;input type="file" accept="image/*" capture="environment"&gt;` for camera access, previews via `URL.createObjectURL`, and **downscales in-browser** before upload: `downscale()` (line 12) does `createImageBitmap` → canvas resize via `fitWithin()` (from `pure.ts`, `MAX_EDGE=1600`) → `canvas.toBlob(..., 'image/jpeg', 0.85)`. Falls back to the original file if `createImageBitmap` throws (e.g. HEIC on non-Safari) and lets the server's mime check decide.
+- **`src/features/scan/api.ts`** (`scanApi`): thin wrapper building `FormData` per route — `readLabel(photos, gtin)` appends `images` (repeated key) + optional `gtin`; `readExpiry(photo)` appends single `image`. Both go through the shared `api()` helper (`src/features/pantry/api.ts:17`) which throws `ApiClientError(message, status, code, details)` on non-2xx, extracting `.error` from the `ApiError` JSON body.
+- **`src/features/scan/ExpiryCapture.tsx`**: full UX reference for "untrusted AI output needing confirmation" — opens a `Dialog`, captures via `PhotoCapture`, shows the `ai` badge + raw OCR text + (if ambiguous) a radio choice between date candidates + a manual `&lt;input type="date"&gt;` fallback always editable, surfaces `yearInferred`/`regexCrossCheck==='disagree'`/`confidence==='low'` as soft warning copy, and only calls `onConfirm()` on an explicit button tap — never automatically.
+- **`src/features/scan/AddProductFlow.tsx`**: top-level orchestrator state machine (`Step` union: `scan → looking → found|not_found → label → draft → manual`). On `draft` step it renders the shared `ProductForm` (`src/features/pantry/ProductForm.tsx`) pre-filled via `draftToFormInitial(step.response.draft)`, passing `flaggedFields={step.response.flaggedFields}` (so flagged inputs get highlighted) and `badge={&lt;Badge tone="ai"&gt;...&lt;/Badge&gt;}`. `onSubmit` calls `pantryApi.create({...values, gtin, source:'gemini_photo', userVerified:true})` only after the user edits/confirms the form — this is the literal "camera photo → API route → Gemini call → Zod-validated draft → client renders pre-filled form → user must confirm" loop closing at `save()` (line 94).
+
+---
+
+### What a new `/api/vision/receipt` route should copy verbatim
+1. `runtime='nodejs'`, outer `try/catch handleRouteError`, `requireUser()` first, `checkRateLimit(user.id, 'vision')` (or add a new bucket key to `RATE_LIMITS` in `src/lib/rate-limit.ts:7-13` if receipts should have a separate budget).
+2. `readImages(request, 'images', N)` for upload parsing/size/mime gating — receipts likely need `max &gt; 1` (multi-item receipts might span a photo or two) and may want a slightly different `ALLOWED_TYPES` if nothing else.
+3. Define `receiptJsonSchema` + `receiptSchema` (zod) in `src/lib/gemini/schemas.ts` following the existing `labelJsonSchema`/`labelSchema` and `*_SYSTEM_PROMPT` pattern, keeping to the §10.3.6 schema subset.
+4. Call `geminiJson({ system: RECEIPT_SYSTEM_PROMPT, text, images, jsonSchema: receiptJsonSchema, zod: receiptSchema })` inside an inner `try/catch` → `visionUnavailable(err)` on failure.
+5. Write a pure `server/vision/receipt.ts` (`buildReceiptResponse`) that re-validates every Gemini-claimed field in code (non-negative prices/quantities, plausible date ranges, maybe fuzzy-matching item names against existing pantry/product names) and accumulates a `flaggedFields`-style array — do **not** let Gemini's output bypass this the way label/date don't.
+6. Add a `ReceiptExtractionResponse` type to `src/contracts/api.ts` with a `draft`-style shape (array of line-item drafts, each probably needing `source: 'gemini_photo'`/`'manual'` per domain-type convention) plus `confidence`/`model`/`notes`, mirroring `LabelExtractionResponse`.
+7. Client side: a `PhotoCapture`-based capture screen, an `ai` badge, and a confirm-required list/form (likely multiple `ProductForm`-like rows, one per receipt line) before anything is written via `pantryApi.create`.</result>
+<usage><subagent_tokens>76555</subagent_tokens><tool_uses>32</tool_uses><duration_ms>137050</duration_ms></usage>
+</task-notification>
+
+---
+
+can I test right now ?
+
+---
+
+for this Chefly turns your pantry into dinner, before anything goes off. can you write it wiht a more professional font onr like make the letters closer because it looks off
+
+---
+
+can you add a footer as well
+
+---
+
+create a designed footer

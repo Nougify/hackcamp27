@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01FTb7uczPCb83aXYV8ucJwd",
+  "agent_id": "a1bcdfbb00cbde922",
+  "subagent_type": "Explore",
+  "task_description": "Explore contracts, SPEC receipt mentions, ownership",
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 42197,
+    "cache_read_tokens": 222633,
+    "output_tokens": 5993,
+    "api_call_count": 8
+  },
+  "started_at": "2026-11-10T22:05:01.454765-07:00",
+  "completed_at": "2026-11-10T22:06:09.028881-07:00"
+}

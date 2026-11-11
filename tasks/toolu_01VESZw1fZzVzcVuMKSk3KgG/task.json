@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01VESZw1fZzVzcVuMKSk3KgG",
+  "agent_id": "a595cce6b2b45289e",
+  "subagent_type": "Explore",
+  "task_description": "Explore pantry add UI flow",
+  "token_usage": {
+    "input_tokens": 26,
+    "cache_creation_tokens": 61160,
+    "cache_read_tokens": 462460,
+    "output_tokens": 11645,
+    "api_call_count": 13
+  },
+  "started_at": "2026-11-10T22:04:48.226264-07:00",
+  "completed_at": "2026-11-10T22:06:52.974279-07:00"
+}
