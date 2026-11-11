@@ -5,7 +5,7 @@ Branch: `johnny/<feature>`. Only edit files you own. Ask in chat before touching
 
 ## Hour 0: foundation slice (parallel with Jerry and Hang)
 
-- [x] **While Jerry scaffolds (~10 min):** create the Auth0 tenant (Regular Web App) and the Tiger service `mise-db` + fork `mise-test`. Put the secrets in team chat or a password manager, never in git.
+- [x] **While Jerry scaffolds (~10 min):** create the Auth0 tenant (Regular Web App) and the Tiger service `chefly-db` + fork `chefly-test`. Put the secrets in team chat or a password manager, never in git.
 - [x] `db/migrations/0001_init.sql`, `0002_timescale.sql` (§5.2–§5.3) + `scripts/migrate.mjs`. Apply to both DBs (0.6)
 - [x] `src/lib/`: `env.ts` (Zod, §8), `auth0.ts`, `src/proxy.ts`, `current-user.ts` (`requireUser`), `db.ts` (postgres.js, `max: DB_POOL_MAX`, `ssl:'require'`)
 - [x] `src/lib/units.ts` + tests (§5.4), `src/lib/gtin.ts` + tests

@@ -25,7 +25,7 @@ interface UserRow {
 const DEV_USER: AppUser = {
   id: '00000000-0000-4000-8000-000000000001',
   auth0Sub: 'dev|local',
-  email: 'demo@mise.local',
+  email: 'demo@chefly.local',
   displayName: 'Demo cook',
   avatarUrl: null,
   tz: 'America/Vancouver',

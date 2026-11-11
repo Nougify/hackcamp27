@@ -2,7 +2,7 @@ import type { StepTimer } from "@/contracts";
 
 // SPEC F11 recovery: {sessionId, stepIndex, timers, updatedAt} on every change; offer resume if < 12 h old.
 const MAX_AGE_MS = 12 * 3600_000;
-const key = (sessionId: string) => `mise.cook.${sessionId}`;
+const key = (sessionId: string) => `chefly.cook.${sessionId}`;
 
 export interface SavedCook {
   sessionId: string;
