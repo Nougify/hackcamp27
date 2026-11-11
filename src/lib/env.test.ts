@@ -5,12 +5,12 @@ const VALID = {
   AUTH0_CLIENT_ID: 'id',
   AUTH0_CLIENT_SECRET: 'secret',
   AUTH0_SECRET: 'a'.repeat(64),
-  APP_BASE_URL: 'https://mise.example',
+  APP_BASE_URL: 'https://chefly.example',
   DATABASE_URL: 'postgres://u:p@h:5432/tsdb?sslmode=require',
   GOOGLE_CLOUD_PROJECT: 'proj',
   DATAANDAPIS_KEY: 'k',
-  OFF_USER_AGENT: 'Mise/0.1 (team@example.com)',
-  RECIPE_FETCH_USER_AGENT: 'MiseRecipeFetcher/0.1',
+  OFF_USER_AGENT: 'Chefly/0.1 (team@example.com)',
+  RECIPE_FETCH_USER_AGENT: 'CheflyRecipeFetcher/0.1',
   DEFAULT_TZ: 'America/Vancouver',
 };
 

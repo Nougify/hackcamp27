@@ -9,8 +9,8 @@ export interface CookPrefs {
 }
 
 // v2: alwaysArmed became the default. v1 prefs are migrated once without their alwaysArmed value.
-const KEY = "mise.cook-prefs.v2";
-const OLD_KEY = "mise.cook-prefs";
+const KEY = "chefly.cook-prefs.v2";
+const OLD_KEY = "chefly.cook-prefs";
 export const DEFAULT_PREFS: CookPrefs = { gesture: DEFAULT_GESTURE_CONFIG, showCamera: true, autoRead: false };
 
 export function loadPrefs(): CookPrefs {

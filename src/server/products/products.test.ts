@@ -179,10 +179,10 @@ describe('fetch adapters', () => {
   it('sends the User-Agent to OFF and basic auth only to staging', async () => {
     const f = vi.fn().mockImplementation(async () => new Response(JSON.stringify(offNutella), { status: 200 }));
     vi.stubGlobal('fetch', f);
-    await fetchOpenFoodFacts('3017620422003', { baseUrl: 'https://world.openfoodfacts.org', userAgent: 'Mise/1' });
-    expect(f.mock.calls[0][1].headers['User-Agent']).toBe('Mise/1');
+    await fetchOpenFoodFacts('3017620422003', { baseUrl: 'https://world.openfoodfacts.org', userAgent: 'Chefly/1' });
+    expect(f.mock.calls[0][1].headers['User-Agent']).toBe('Chefly/1');
     expect(f.mock.calls[0][1].headers.Authorization).toBeUndefined();
-    await fetchOpenFoodFacts('3017620422003', { baseUrl: 'https://world.openfoodfacts.net/', userAgent: 'Mise/1' });
+    await fetchOpenFoodFacts('3017620422003', { baseUrl: 'https://world.openfoodfacts.net/', userAgent: 'Chefly/1' });
     expect(f.mock.calls[1][0]).toContain('https://world.openfoodfacts.net/api/v2/product/3017620422003.json?fields=');
     expect(f.mock.calls[1][1].headers.Authorization).toBe(`Basic ${btoa('off:off')}`);
   });

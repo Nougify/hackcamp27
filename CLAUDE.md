@@ -1,4 +1,4 @@
-# Mise
+# Chefly
 
 Hands-free pantry-to-plate cooking app: scan groceries, find real recipes that fit the pantry and diet, cook by gesture or voice, track nutrition. Next.js 16 App Router, React 19, TypeScript, Auth0, Tiger Data (Postgres/TimescaleDB via postgres.js), Gemini, MediaPipe, ElevenLabs.
 

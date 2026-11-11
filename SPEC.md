@@ -1,6 +1,6 @@
-# Mise: build spec for a hands-free pantry-to-plate cooking app
+# Chefly: build spec for a hands-free pantry-to-plate cooking app
 
-This SPEC.md specifies **Mise** (working name; rename freely), a Next.js web app built at HackCamp 2026 (nwPlus, UBC Vancouver, Nov 7–8, 2026). Users sign in with **Auth0**, add groceries by barcode, keep a per-user pantry with quantities and expiry dates in **Tiger Data** (TimescaleDB/Postgres), and get **real recipes found online by Gemini**, ranked toward whatever expires soonest. The original recipe is always shown first with attribution; an "AI-adapted" variant appears only when an ingredient is missing. Users cook hands-free with **MediaPipe** webcam gestures (scroll, next/previous step, timer, read aloud), with steps read aloud by **ElevenLabs** and `speechSynthesis` as the fallback. Finishing a recipe deducts what was used from the pantry and logs calories and protein in one database transaction. The app is served over HTTPS from a **Vultr** VPS, which the camera requires. The spec is written so three Claude Code accounts can build it in parallel through **Entire**. A Phase 0 foundation freezes the contracts in `src/contracts/`, the SQL schema and the stubs. After that, three workstreams (Cook Mode, Pantry & Nutrition, Recipes & Cooking Backend) each own separate directories, and an integration phase merges them. Researched facts are cited inline. Anything not confirmed against a primary source in research is marked **[VERIFY]**, and the open items are collected in §17. Treat those as the first things to check, not as settled.
+This SPEC.md specifies **Chefly** (working name; rename freely), a Next.js web app built at HackCamp 2026 (nwPlus, UBC Vancouver, Nov 7–8, 2026). Users sign in with **Auth0**, add groceries by barcode, keep a per-user pantry with quantities and expiry dates in **Tiger Data** (TimescaleDB/Postgres), and get **real recipes found online by Gemini**, ranked toward whatever expires soonest. The original recipe is always shown first with attribution; an "AI-adapted" variant appears only when an ingredient is missing. Users cook hands-free with **MediaPipe** webcam gestures (scroll, next/previous step, timer, read aloud), with steps read aloud by **ElevenLabs** and `speechSynthesis` as the fallback. Finishing a recipe deducts what was used from the pantry and logs calories and protein in one database transaction. The app is served over HTTPS from a **Vultr** VPS, which the camera requires. The spec is written so three Claude Code accounts can build it in parallel through **Entire**. A Phase 0 foundation freezes the contracts in `src/contracts/`, the SQL schema and the stubs. After that, three workstreams (Cook Mode, Pantry & Nutrition, Recipes & Cooking Backend) each own separate directories, and an integration phase merges them. Researched facts are cited inline. Anything not confirmed against a primary source in research is marked **[VERIFY]**, and the open items are collected in §17. Treat those as the first things to check, not as settled.
 
 ---
 
@@ -17,7 +17,7 @@ This SPEC.md specifies **Mise** (working name; rename freely), a Next.js web app
 
 ### 1.1 Problem and pitch
 
-Home cooks waste food they forgot they had, and following a recipe on a phone or laptop with wet, floury hands is awkward. Screens dim and you lose your place. Mise closes the loop: **scan groceries → know what expires → cook a real recipe that uses it → touch nothing while cooking → pantry and nutrition update themselves.** HackCamp's challenge is to "identify a problem facing a community and build a solution that makes a meaningful difference". Judging covers Problem & User Research, Innovation, Technical Implementation, Design & UX, and Presentation ([HackCamp 2026 Devpost](https://hackcamp-2026.devpost.com/)).
+Home cooks waste food they forgot they had, and following a recipe on a phone or laptop with wet, floury hands is awkward. Screens dim and you lose your place. Chefly closes the loop: **scan groceries → know what expires → cook a real recipe that uses it → touch nothing while cooking → pantry and nutrition update themselves.** HackCamp's challenge is to "identify a problem facing a community and build a solution that makes a meaningful difference". Judging covers Problem & User Research, Innovation, Technical Implementation, Design & UX, and Presentation ([HackCamp 2026 Devpost](https://hackcamp-2026.devpost.com/)).
 
 ### 1.2 Goals (all confirmed by the team)
 
@@ -1035,7 +1035,7 @@ export type ManualMealRequest =
 | `AUTH0_CLIENT_ID` | server | yes | | |
 | `AUTH0_CLIENT_SECRET` | server | yes | | |
 | `AUTH0_SECRET` | server | yes | `openssl rand -hex 32` **[VERIFY convention]** | Session encryption |
-| `APP_BASE_URL` | server | prod yes | `https://mise.tech` | Optional in dev, where the SDK infers it from the host |
+| `APP_BASE_URL` | server | prod yes | `https://chefly.tech` | Optional in dev, where the SDK infers it from the host |
 | `DATABASE_URL` | server | yes | from `tiger db connection-string` | Typically `postgres://tsdbadmin:…@host:port/tsdb?sslmode=require` **[VERIFY format]** |
 | `DB_POOL_MAX` | server | no | `5` | postgres.js `max` |
 | `DATABASE_URL_TEST` | server (tests) | no | connection string of a `tiger service fork` | `npm run test:db` only; never production |
@@ -1046,8 +1046,8 @@ export type ManualMealRequest =
 | `GEMINI_SEARCH_MODEL` | server | no | `gemini-3.8-flash` | Grounded discovery. Try `gemini-3.5-flash-lite` for latency **[VERIFY grounding support]** |
 | `DATAANDAPIS_KEY` | server | yes | | `X-Api-Key` for barcode lookup |
 | `OFF_BASE_URL` | server | no | `https://world.openfoodfacts.org` | Use `https://world.openfoodfacts.net` (basic auth `off:off`) while testing |
-| `OFF_USER_AGENT` | server | yes | `Mise/0.1 (team@example.com)` | Required custom UA ([OFF API](https://openfoodfacts.github.io/openfoodfacts-server/api/)) |
-| `RECIPE_FETCH_USER_AGENT` | server | yes | `MiseRecipeFetcher/0.1 (+https://mise.tech/bot)` | Honest UA for publisher fetches |
+| `OFF_USER_AGENT` | server | yes | `Chefly/0.1 (team@example.com)` | Required custom UA ([OFF API](https://openfoodfacts.github.io/openfoodfacts-server/api/)) |
+| `RECIPE_FETCH_USER_AGENT` | server | yes | `CheflyRecipeFetcher/0.1 (+https://chefly.tech/bot)` | Honest UA for publisher fetches |
 | `ELEVENLABS_API_KEY` | server | no* | | *If missing, `/api/tts` returns 503 and the client uses `speechSynthesis` |
 | `ELEVENLABS_VOICE_ID` | server | no | `JBFqnCBsd6RMkjVDRZzb` (docs example voice) | ([Stream speech](https://elevenlabs.io/docs/api-reference/text-to-speech/stream)) |
 | `ELEVENLABS_MODEL_ID` | server | no | `eleven_flash_v2_5` | |
@@ -1573,10 +1573,10 @@ A true *expiration* date is mandatory only on a short list of foods (formulated 
 - **Tiger CLI and MCP** ([Tiger blog](https://www.tigerdata.com/blog/five-features-tiger-cli-you-arent-using-but-should)):
   ```bash
   curl -fsSL https://cli.tigerdata.com | sh && tiger auth login
-  tiger service create --name mise-db
+  tiger service create --name chefly-db
   tiger db connection-string
   tiger mcp install claude-code          # lets each Claude agent inspect schema/queries
-  tiger service fork <service-id> --name mise-staging   # instant zero-copy fork for migration tests
+  tiger service fork <service-id> --name chefly-staging   # instant zero-copy fork for migration tests
   ```
 
 ---
@@ -1814,7 +1814,7 @@ volumes: { caddy_data: {}, caddy_config: {} }
 
 `Caddyfile`:
 ```
-mise.tech {
+chefly.tech {
   encode zstd gzip
   reverse_proxy web:3000
 }
@@ -1935,7 +1935,7 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 | 0.3 | Write `SPEC.md` (this file) and `CLAUDE.md` (§19). Run `entire graph setup && entire brain setup` and commit the managed blocks and `.entire/agent-guide.md` | Committed |
 | 0.4 | **Contracts:** `src/contracts/{domain,api,gesture,voice,index}.ts` exactly as in §6–§7, plus fixtures | `npm run typecheck` passes |
 | 0.5 | `src/lib/`: `env.ts` (Zod), `auth0.ts`, `proxy.ts`, `current-user.ts`, `db.ts` (postgres.js pool `max: DB_POOL_MAX`, `ssl:'require'`), `http.ts` (json/error helpers, NDJSON writer), `rate-limit.ts`, `units.ts` + tests, `gtin.ts` + tests | Unit tests pass. Login works locally |
-| 0.6 | Tiger: create the service (`mise-db`) and a fork (`mise-test`). Write `db/migrations/0001`, `0002` and `scripts/migrate.mjs`. Apply to both. Run `tiger mcp install claude-code` on each machine | §14.3 test 1 passes. Resolve §17 item 6 |
+| 0.6 | Tiger: create the service (`chefly-db`) and a fork (`chefly-test`). Write `db/migrations/0001`, `0002` and `scripts/migrate.mjs`. Apply to both. Run `tiger mcp install claude-code` on each machine | §14.3 test 1 passes. Resolve §17 item 6 |
 | 0.7 | `src/lib/gemini/client.ts` with `geminiJson` and `geminiGroundedSearch` verified live (§17 items 1–3). Write the JSON schemas from §10.3 into `schemas.ts` | One grounded and one vision smoke script succeed |
 | 0.8 | **Stub route handlers** for every route in §7, returning fixtures, typed against contracts, with `requireUser()` | Each route returns typed fixture JSON |
 | 0.9 | `(app)/layout.tsx` with auth gate and nav (Today, Pantry, Recipes, Settings). Landing page. `components/ui/*` tokens and primitives. Empty pages for each route group showing "TODO (owner)" | All pages render behind login |
@@ -2033,7 +2033,7 @@ Phase 0 resolves items 1–8 before the workstreams fork. Record each answer in 
 ```bash
 curl -fsSL https://entire.io/install.sh | bash      # entire.io now redirects to entire.com
 entire login
-cd mise && entire enable --agent claude-code
+cd chefly && entire enable --agent claude-code
 entire plugin install graph && entire plugin install brain
 entire graph setup && entire brain setup           # regenerates .entire/agent-guide.md + CLAUDE.md managed block
 entire brain connect                               # hosted, team-shared memory across all 3 accounts
@@ -2057,7 +2057,7 @@ How each Entire capability gets used, which doubles as prize proof:
 Anthropic advises: "Keep it concise. For each line, ask: 'Would removing this cause Claude to make mistakes?'" Include commands, gotchas and repository etiquette, and exclude file-by-file tours ([best practices](https://code.claude.com/docs/en/best-practices.md)).
 
 ```markdown
-# Mise — agent rules
+# Chefly — agent rules
 
 Spec: @SPEC.md (contracts in src/contracts/ win over prose). Tasks: @TASKS.md
 

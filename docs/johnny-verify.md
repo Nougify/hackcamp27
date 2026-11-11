@@ -33,7 +33,7 @@ The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `o
 - **Staging data isn't realistic.** It holds test products for the GS1 example codes (`5901234123457` is "Pancakes"), and its Nutella has an empty `quantity`. Fixtures therefore come from a production read.
 
 ### 6. Tiger: TimescaleDB present, hypertable syntax, tz-aware time_bucket, real-time cagg, connection string, storage cap
-**Verified 2026-11-08** on `mise-test` (fork) and `mise-db`, both already migrated by a teammate with dev's `migrate.mjs`:
+**Verified 2026-11-08** on `chefly-test` (fork) and `chefly-db`, both already migrated by a teammate with dev's `migrate.mjs`:
 - **Extensions:** `timescaledb@2.31.0`, `timescaledb_toolkit@1.26.0`, `pgcrypto@1.4` on PostgreSQL 18.6. Session time zone is `Etc/UTC`.
 - **Migrations:** `0001_init.sql` and `0002_timescale.sql` are in `schema_migrations` on both DBs. So **0002 runs fine inside a transaction** with dev's `migrate.mjs`; no no-transaction path is needed.
 - **Hypertables:** `meal_logs` (`eaten_at`, 7-day chunks) and `pantry_events` (`occurred_at`, 7-day chunks). `WITH (tsdb.hypertable…)` accepted the composite PK `PRIMARY KEY (id, eaten_at)`.
@@ -50,8 +50,8 @@ The adapter treats these as **miss**: any non-2xx other than 401/402/429/5xx, `o
 - Signed-out `GET /api/pantry` returns **401** `{"error":{"code":"UNAUTHORIZED","message":"No active session"}}`. So the no-arg `getSession()` runs inside a route handler and returns null without a session.
 - Signed-out `GET /today` returns **307 → /auth/login**.
 - `/auth/login` returns **307 → https://nougify.ca.auth0.com/authorize** (PKCE S256, scope `openid profile email offline_access`, `redirect_uri=http://localhost:3000/auth/callback`).
-- **Browser login (F1 AC2), verified 2026-11-08:** Google sign-in → sign-out → sign-in again against `mise-db`. Exactly **one** `users` row was created for the account (`auth0_sub` `google-oauth2|…`, email and name filled in, `tz` America/Vancouver, `onboarded_at` null). `last_seen_at` moved on the second login, and there are no duplicate `sub`s. So the session-backed `getSession()` and `requireUser()` upsert work in a real request.
-- `mise-db` also holds a second user, created earlier by another Google account (a teammate testing). Expected: the dev server writes to the shared `DATABASE_URL`.
+- **Browser login (F1 AC2), verified 2026-11-08:** Google sign-in → sign-out → sign-in again against `chefly-db`. Exactly **one** `users` row was created for the account (`auth0_sub` `google-oauth2|…`, email and name filled in, `tz` America/Vancouver, `onboarded_at` null). `last_seen_at` moved on the second login, and there are no duplicate `sub`s. So the session-backed `getSession()` and `requireUser()` upsert work in a real request.
+- `chefly-db` also holds a second user, created earlier by another Google account (a teammate testing). Expected: the dev server writes to the shared `DATABASE_URL`.
 
 How sign-in is enforced on `dev`:
 - `src/proxy.ts` only runs `auth0.middleware()`, which mounts `/auth/*` and rolls sessions. It's skipped when `authDisabled`, i.e. outside production with no `AUTH0_DOMAIN`, where everyone is a demo user.

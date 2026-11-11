@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Mise design tokens. Warm kitchen palette, burnt-orange accent.
+/* Chefly design tokens. Warm kitchen palette, burnt-orange accent.
    App is light; cook mode is dark (wrap it in .theme-cook). */
 :root {
   --bg: #faf6ef;

@@ -1,4 +1,4 @@
-# Mise
+# Chefly
 
 A hands-free cooking companion: scan pantry items, find recipes that match what you have and your diet, then cook with gesture/voice control. Built with Next.js (App Router), Auth0, Postgres/Tigerdata, Gemini, MediaPipe, and ElevenLabs TTS.
 
